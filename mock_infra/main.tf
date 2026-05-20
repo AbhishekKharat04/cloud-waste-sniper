@@ -3,6 +3,7 @@ provider "aws" {
 }
 
 resource "aws_ebs_volume" "unused_data_volume" {
+  count = 0 # Added by Cloud Waste Sniper
   availability_zone = "us-east-1a"
   size              = 100
   type              = "gp3"

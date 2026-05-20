@@ -112,14 +112,18 @@
         statusEl.className = 'status';
         
         try {
-            const response = await fetch('/api/remediate', {
+            const body = {
+                    resource_id: resourceId,
+                    remediation_type: remType
+                };
+                if (newValue) {
+                    body.new_value = newValue;
+                }
+
+                const response = await fetch('/api/remediate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    resource_id: resourceId,
-                    remediation_type: remType,
-                    new_value: newValue
-                })
+                body: JSON.stringify(body)
             });
             const data = await response.json();
             

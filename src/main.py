@@ -19,10 +19,12 @@ templates_dir = os.path.join(os.path.dirname(__file__), "templates")
 os.makedirs(templates_dir, exist_ok=True)
 templates = Jinja2Templates(directory=templates_dir)
 
+from typing import Optional
+
 class RemediateRequest(BaseModel):
     resource_id: str
     remediation_type: str  # e.g., "count_zero" or "downsize_instance"
-    new_value: str = None  # e.g., "t3.medium"
+    new_value: Optional[str] = None  # e.g., "t3.medium"
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):

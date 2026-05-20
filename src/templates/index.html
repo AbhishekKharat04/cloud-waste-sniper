@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud Waste Sniper - Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #ffffff; padding: 20px; }
+        .container { max-width: 900px; margin: auto; }
+        .card { background-color: #1e1e1e; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .btn { background-color: #007acc; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        .btn:hover { background-color: #005f99; }
+        .btn-danger { background-color: #e51400; }
+        .btn-danger:hover { background-color: #b30f00; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #333; }
+        th { background-color: #2d2d2d; }
+        .status { margin-top: 10px; font-weight: bold; color: #4caf50; }
+        .error { color: #f44336; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎯 Cloud Waste Sniper</h1>
+    <p>Automated FinOps via Terraform + Git Pull Requests.</p>
+
+    <div class="card">
+        <h3>Detected Infrastructure Waste</h3>
+        <button class="btn" onclick="scanWaste()">🔍 Run AWS Scan</button>
+        <div id="statusMessage" class="status"></div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Resource ID</th>
+                    <th>Type</th>
+                    <th>Reason</th>
+                    <th>Est. Monthly Savings</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="wasteTableBody">
+                <!-- Rows populated by JS -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    async function scanWaste() {
+        const statusEl = document.getElementById('statusMessage');
+        const tableBody = document.getElementById('wasteTableBody');
+        
+        statusEl.textContent = 'Scanning...';
+        statusEl.className = 'status';
+        tableBody.innerHTML = '';
+        
+        try {
+            const response = await fetch('/api/scan');
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                statusEl.textContent = `Scan complete. Found ${data.data.length} wasteful resources.`;
+                
+                data.data.forEach(item => {
+                    const tr = document.createElement('tr');
+                    
+                    // Determine remediation details
+                    let actionBtn = '';
+                    if (item.type === 'ebs_volume') {
+                        actionBtn = `<button class="btn btn-danger" onclick="remediate('${item.resource_id}', 'count_zero', null)">Remove from TF</button>`;
+                    } else if (item.type === 'ec2_instance') {
+                        actionBtn = `<button class="btn btn-danger" onclick="remediate('${item.resource_id}', 'downsize_instance', '${item.suggested_downsize}')">Downsize TF</button>`;
+                    }
+                    
+                    tr.innerHTML = `
+                        <td><code>${item.resource_id}</code></td>
+                        <td>${item.type}</td>
+                        <td>${item.reason}</td>
+                        <td>$${(item.estimated_monthly_waste || item.estimated_monthly_savings).toFixed(2)}</td>
+                        <td>${actionBtn}</td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+            } else {
+                statusEl.textContent = 'Error scanning waste.';
+                statusEl.className = 'status error';
+            }
+        } catch (error) {
+            statusEl.textContent = 'Network error during scan.';
+            statusEl.className = 'status error';
+        }
+    }
+
+    async function remediate(resourceId, remType, newValue) {
+        const statusEl = document.getElementById('statusMessage');
+        statusEl.textContent = `Initiating Remediation for ${resourceId}...`;
+        statusEl.className = 'status';
+        
+        try {
+            const response = await fetch('/api/remediate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    resource_id: resourceId,
+                    remediation_type: remType,
+                    new_value: newValue
+                })
+            });
+            const data = await response.json();
+            
+            if (response.ok && data.status === 'success') {
+                statusEl.textContent = `Success! ${data.message}`;
+            } else if (data.status === 'partial_success') {
+                statusEl.textContent = `Warning: ${data.message}`;
+                statusEl.className = 'status error';
+            } else {
+                statusEl.textContent = `Failed: ${data.detail || data.message}`;
+                statusEl.className = 'status error';
+            }
+        } catch (error) {
+            statusEl.textContent = 'Network error during remediation.';
+            statusEl.className = 'status error';
+        }
+    }
+</script>
+
+</body>
+</html>

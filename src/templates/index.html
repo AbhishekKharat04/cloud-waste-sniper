@@ -93,6 +93,19 @@
         }
     }
 
+    function extractErrorMessage(data) {
+        // FastAPI detail can be a string, an object, or an array of validation errors
+        if (data.detail) {
+            if (typeof data.detail === 'string') return data.detail;
+            if (Array.isArray(data.detail)) {
+                return data.detail.map(e => e.msg || JSON.stringify(e)).join('; ');
+            }
+            return JSON.stringify(data.detail);
+        }
+        if (data.message) return data.message;
+        return JSON.stringify(data);
+    }
+
     async function remediate(resourceId, remType, newValue) {
         const statusEl = document.getElementById('statusMessage');
         statusEl.textContent = `Initiating Remediation for ${resourceId}...`;
@@ -116,11 +129,11 @@
                 statusEl.textContent = `Warning: ${data.message}`;
                 statusEl.className = 'status error';
             } else {
-                statusEl.textContent = `Failed: ${data.detail || data.message}`;
+                statusEl.textContent = `Failed: ${extractErrorMessage(data)}`;
                 statusEl.className = 'status error';
             }
         } catch (error) {
-            statusEl.textContent = 'Network error during remediation.';
+            statusEl.textContent = `Network error: ${error.message || error}`;
             statusEl.className = 'status error';
         }
     }

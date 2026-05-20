@@ -39,13 +39,49 @@ class TFModifier:
         if not os.path.exists(tf_file_path):
             raise FileNotFoundError(f"Terraform file not found at {tf_file_path}")
 
+    def _find_block_end(self, content: str, start_idx: int) -> int:
+        """Finds the closing brace of a resource block using brace-depth counting.
+        
+        Args:
+            content: The full file content string.
+            start_idx: Index immediately after the opening '{' of the resource block.
+            
+        Returns:
+            Index of the matching closing '}' character.
+        """
+        depth = 1
+        idx = start_idx
+        while idx < len(content) and depth > 0:
+            if content[idx] == '{':
+                depth += 1
+            elif content[idx] == '}':
+                depth -= 1
+            idx += 1
+        return idx - 1  # Points at the closing '}'
+
+    def _detect_newline(self, content: str) -> str:
+        """Detects the line ending style (CRLF vs LF) used in the file."""
+        if '\r\n' in content:
+            return '\r\n'
+        return '\n'
+
     def apply_remediation(self, tf_type: str, tf_name: str, remediation_type: str, new_value: str = None) -> bool:
-        """Modifies the target .tf file directly."""
+        """Modifies the target .tf file directly.
+        
+        Supports two remediation types:
+          - 'count_zero': Injects `count = 0` into the resource block to disable it.
+          - 'downsize_instance': Changes the `instance_type` attribute value.
+        
+        Both operations are idempotent — running them multiple times will not
+        stack duplicate comments or inject redundant lines.
+        """
         with open(self.tf_file_path, 'r') as f:
             content = f.read()
 
+        newline = self._detect_newline(content)
+
         # Regex to find the start of the resource block
-        resource_pattern = rf'(resource\s+"{tf_type}"\s+"{tf_name}"\s+{{)'
+        resource_pattern = rf'(resource\s+"{re.escape(tf_type)}"\s+"{re.escape(tf_name)}"\s+{{)'
         match = re.search(resource_pattern, content)
         
         if not match:
@@ -53,24 +89,35 @@ class TFModifier:
             return False
 
         block_start_idx = match.end()
-        
+        block_end_idx = self._find_block_end(content, block_start_idx)
+        block_content = content[block_start_idx:block_end_idx]
+
         if remediation_type == "count_zero":
-            # Inject count = 0 right after the resource declaration
-            modified_content = content[:block_start_idx] + "\n  count = 0 # Added by Cloud Waste Sniper" + content[block_start_idx:]
+            # Idempotency: skip if count = 0 is already present in this block
+            if 'count' in block_content and '= 0' in block_content:
+                logger.info(f"count = 0 already present for {tf_type}.{tf_name}. Skipping.")
+                return True
+
+            # Inject count = 0 right after the opening brace, using the file's newline style
+            injection = f"{newline}  count = 0 # Added by Cloud Waste Sniper"
+            modified_content = content[:block_start_idx] + injection + content[block_start_idx:]
             
         elif remediation_type == "downsize_instance":
             if not new_value:
                 raise ValueError("new_value is required for downsize_instance")
-            # We need to find the instance_type attribute inside this block and replace it
-            # A simple approach for MVP: extract the block and replace inside it
-            # To do this safely, we should ideally count braces, but for MVP, regex is fine
-            
-            # Find the first closing brace after the block start
-            block_end_idx = content.find('}', block_start_idx)
-            block_content = content[block_start_idx:block_end_idx]
-            
-            # Replace instance_type
-            new_block_content = re.sub(r'instance_type\s*=\s*".*"', f'instance_type = "{new_value}" # Downsized by Cloud Waste Sniper', block_content)
+
+            # Idempotency: check if the value is already set to the target
+            already_set = re.search(rf'instance_type\s*=\s*"{re.escape(new_value)}"', block_content)
+            if already_set:
+                logger.info(f"instance_type already set to {new_value} for {tf_type}.{tf_name}. Skipping.")
+                return True
+
+            # Replace instance_type value (strip any previous sniper comments first)
+            new_block_content = re.sub(
+                r'instance_type\s*=\s*"[^"]*"(\s*#.*)?',
+                f'instance_type = "{new_value}" # Downsized by Cloud Waste Sniper',
+                block_content
+            )
             
             modified_content = content[:block_start_idx] + new_block_content + content[block_end_idx:]
             

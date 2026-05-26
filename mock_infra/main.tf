@@ -10,7 +10,7 @@ resource "aws_ebs_volume" "unused_data_volume" {
 
 resource "aws_instance" "overprovisioned_api" {
   ami           = "ami-0c55b159cbfafe1f0"
-  instance_type = "t3.2xlarge"
+  instance_type = "t3.medium" # Downsized by Cloud Waste Sniper
 
   tags = {
     Environment = "Staging"

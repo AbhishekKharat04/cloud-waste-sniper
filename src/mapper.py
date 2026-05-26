@@ -65,7 +65,7 @@ class TFModifier:
             return '\r\n'
         return '\n'
 
-    def apply_remediation(self, tf_type: str, tf_name: str, remediation_type: str, new_value: str = None) -> bool:
+    def apply_remediation(self, tf_type: str, tf_name: str, remediation_type: str, new_value: str = None) -> str:
         """Modifies the target .tf file directly.
         
         Supports two remediation types:
@@ -74,6 +74,11 @@ class TFModifier:
         
         Both operations are idempotent — running them multiple times will not
         stack duplicate comments or inject redundant lines.
+        
+        Returns:
+          "modified" if changes were successfully made and saved.
+          "skipped" if the optimization is already present.
+          "error" if resource not found or remediation fails.
         """
         with open(self.tf_file_path, 'r') as f:
             content = f.read()
@@ -86,7 +91,7 @@ class TFModifier:
         
         if not match:
             logger.error(f"Resource {tf_type}.{tf_name} not found in {self.tf_file_path}")
-            return False
+            return "error"
 
         block_start_idx = match.end()
         block_end_idx = self._find_block_end(content, block_start_idx)
@@ -96,7 +101,7 @@ class TFModifier:
             # Idempotency: skip if count = 0 is already present in this block
             if 'count' in block_content and '= 0' in block_content:
                 logger.info(f"count = 0 already present for {tf_type}.{tf_name}. Skipping.")
-                return True
+                return "skipped"
 
             # Inject count = 0 right after the opening brace, using the file's newline style
             injection = f"{newline}  count = 0 # Added by Cloud Waste Sniper"
@@ -110,7 +115,7 @@ class TFModifier:
             already_set = re.search(rf'instance_type\s*=\s*"{re.escape(new_value)}"', block_content)
             if already_set:
                 logger.info(f"instance_type already set to {new_value} for {tf_type}.{tf_name}. Skipping.")
-                return True
+                return "skipped"
 
             # Replace instance_type value (strip any previous sniper comments first)
             new_block_content = re.sub(
@@ -123,10 +128,11 @@ class TFModifier:
             
         else:
             logger.error(f"Unknown remediation_type: {remediation_type}")
-            return False
+            return "error"
 
         with open(self.tf_file_path, 'w') as f:
             f.write(modified_content)
             
         logger.info(f"Successfully modified {self.tf_file_path} for {tf_type}.{tf_name}")
-        return True
+        return "modified"
+

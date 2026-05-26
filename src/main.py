@@ -1,6 +1,6 @@
 import os
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -11,6 +11,7 @@ load_dotenv()
 from src.scraper import AWSSniper
 from src.mapper import StateMapper, TFModifier
 from src.git_engine import GitPRCreator
+from src.reporter import FinOpsReporter
 
 app = FastAPI(title="Cloud Waste Sniper API")
 
@@ -37,7 +38,28 @@ async def scan_waste():
     sniper = AWSSniper()
     try:
         waste = sniper.scan_all()
-        return {"status": "success", "data": waste}
+        pricing_engine = "Bright Data Real-Time Scraped Engine" if sniper.live_pricing else "Default Estimates"
+        return {
+            "status": "success", 
+            "data": waste,
+            "pricing_engine": pricing_engine
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/report")
+async def download_report():
+    """Runs a scan and returns a downloadable Markdown executive report."""
+    sniper = AWSSniper()
+    try:
+        waste = sniper.scan_all()
+        reporter = FinOpsReporter(waste)
+        markdown = reporter.generate()
+        return PlainTextResponse(
+            content=markdown,
+            media_type="text/markdown",
+            headers={"Content-Disposition": "attachment; filename=FinOps_Executive_Report.md"}
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -61,12 +83,18 @@ async def remediate_waste(req: RemediateRequest):
         
         # 2. Modify the .tf file safely
         modifier = TFModifier(tf_path)
-        success = modifier.apply_remediation(tf_type, tf_name, req.remediation_type, req.new_value)
+        status = modifier.apply_remediation(tf_type, tf_name, req.remediation_type, req.new_value)
         
-        if not success:
+        if status == "error":
             raise HTTPException(status_code=500, detail=f"Failed to modify {tf_path}")
+        elif status == "skipped":
+            # Idempotent skip - do NOT create a PR (since git commit would fail)
+            return {
+                "status": "success",
+                "message": f"Resource {tf_type}.{tf_name} is already fully optimized. No further Git commit necessary."
+            }
             
-        # 3. Commit and generate PR
+        # 3. Commit and generate PR (Only run on "modified")
         git_engine = GitPRCreator()
         pr_success = git_engine.create_remediation_pr(tf_type, tf_name)
         

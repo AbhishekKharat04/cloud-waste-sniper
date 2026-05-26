@@ -3,142 +3,800 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud Waste Sniper - Dashboard</title>
+    <title>Cloud Waste Sniper - Enterprise FinOps</title>
+    
+    <!-- Modern Typography & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #ffffff; padding: 20px; }
-        .container { max-width: 900px; margin: auto; }
-        .card { background-color: #1e1e1e; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .btn { background-color: #007acc; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-size: 14px; }
-        .btn:hover { background-color: #005f99; }
-        .btn-danger { background-color: #e51400; }
-        .btn-danger:hover { background-color: #b30f00; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #333; }
-        th { background-color: #2d2d2d; }
-        .status { margin-top: 10px; font-weight: bold; color: #4caf50; }
-        .error { color: #f44336; }
+        :root {
+            --bg-base: #0b0c10;
+            --bg-surface: #141722;
+            --bg-card: #1f2330;
+            --border-glow: rgba(0, 210, 255, 0.15);
+            --border-subtle: rgba(255, 255, 255, 0.05);
+            
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            
+            --color-ebs: #8a2be2;      /* Purple */
+            --color-ec2: #00d2ff;      /* Cyan */
+            --color-savings: #00e676;  /* Neon Green */
+            --color-danger: #ff1744;   /* Neon Red */
+            
+            --glow-ebs: rgba(138, 43, 226, 0.4);
+            --glow-ec2: rgba(0, 210, 255, 0.4);
+            --glow-savings: rgba(0, 230, 118, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            padding: 40px 20px;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        /* ─── Header & Title ─── */
+        header {
+            margin-bottom: 40px;
+            text-align: center;
+            position: relative;
+        }
+
+        header h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00d2ff 0%, #8a2be2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+        }
+
+        /* ─── KPI Metric Cards Grid ─── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .kpi-card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: transparent;
+            transition: all 0.3s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .kpi-card.ebs::before { background: var(--color-ebs); }
+        .kpi-card.ec2::before { background: var(--color-ec2); }
+        .kpi-card.savings::before { background: var(--color-savings); }
+        .kpi-card.engine::before { background: linear-gradient(90deg, var(--color-ec2), var(--color-ebs)); }
+
+        .kpi-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .kpi-value {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .kpi-card.savings .kpi-value {
+            color: var(--color-savings);
+            text-shadow: 0 0 10px rgba(0, 230, 118, 0.15);
+        }
+
+        .kpi-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* Pricing Badge style inside KPI Card */
+        .engine-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(0, 210, 255, 0.1);
+            color: var(--color-ec2);
+            border: 1px solid rgba(0, 210, 255, 0.2);
+            margin-top: 4px;
+        }
+
+        .engine-badge.scraped {
+            background: rgba(0, 230, 118, 0.1);
+            color: var(--color-savings);
+            border: 1px solid rgba(0, 230, 118, 0.2);
+        }
+
+        /* ─── Control Buttons Box ─── */
+        .controls-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            justify-content: center;
+        }
+
+        .btn {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            padding: 14px 28px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .btn-scan {
+            background: linear-gradient(135deg, #00d2ff 0%, #007acc 100%);
+            color: white;
+        }
+
+        .btn-scan:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 210, 255, 0.3);
+        }
+
+        .btn-report {
+            background: rgba(0, 230, 118, 0.1);
+            color: var(--color-savings);
+            border: 1px solid rgba(0, 230, 118, 0.3);
+        }
+
+        .btn-report:hover {
+            background: var(--color-savings);
+            color: #0b0c10;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 230, 118, 0.2);
+        }
+
+        /* ─── Status alert bar ─── */
+        .status-alert {
+            max-width: 800px;
+            margin: 0 auto 30px auto;
+            padding: 16px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            display: none;
+            border-left: 4px solid transparent;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .status-alert.info {
+            background: rgba(0, 210, 255, 0.08);
+            border-color: var(--color-ec2);
+            color: #8ae4ff;
+            display: block;
+        }
+
+        .status-alert.success {
+            background: rgba(0, 230, 118, 0.08);
+            border-color: var(--color-savings);
+            color: #9cffcc;
+            display: block;
+        }
+
+        .status-alert.error {
+            background: rgba(255, 23, 68, 0.08);
+            border-color: var(--color-danger);
+            color: #ffb1c1;
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ─── Visual Charts Layout Grid ─── */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 850px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            height: 350px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-card h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 10px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ─── Infrastructure Findings Table Box ─── */
+        .findings-card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.5);
+            margin-bottom: 40px;
+        }
+
+        .findings-card h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            letter-spacing: -0.2px;
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.9rem;
+        }
+
+        th {
+            background-color: rgba(255,255,255,0.02);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+
+        tr:hover td {
+            background-color: rgba(255,255,255,0.01);
+        }
+
+        code {
+            font-family: 'Courier New', Courier, monospace;
+            background: #11141e;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #ffd666;
+            font-size: 0.85rem;
+        }
+
+        /* Custom Badge Pills */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-ebs {
+            background-color: rgba(138, 43, 226, 0.15);
+            color: #ca9df7;
+            border: 1px solid rgba(138, 43, 226, 0.3);
+        }
+
+        .badge-ec2 {
+            background-color: rgba(0, 210, 255, 0.15);
+            color: #8ae4ff;
+            border: 1px solid rgba(0, 210, 255, 0.3);
+        }
+
+        .badge-live {
+            background-color: rgba(0, 230, 118, 0.12);
+            color: var(--color-savings);
+            border: 1px solid rgba(0, 230, 118, 0.25);
+        }
+
+        .badge-default {
+            background-color: rgba(156, 163, 175, 0.1);
+            color: #d1d5db;
+            border: 1px solid rgba(156, 163, 175, 0.25);
+        }
+
+        /* Action Buttons */
+        .btn-action {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background-color: var(--color-danger);
+            color: white;
+            box-shadow: 0 2px 8px rgba(255, 23, 68, 0.2);
+        }
+
+        .btn-action:hover {
+            background-color: #d50000;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 23, 68, 0.4);
+        }
+
+        .btn-action:disabled {
+            background-color: #374151;
+            color: #9ca3af;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* Loading Skeleton */
+        .skeleton-row td {
+            padding: 24px 16px;
+        }
+
+        .skeleton-bar {
+            height: 12px;
+            background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🎯 Cloud Waste Sniper</h1>
-    <p>Automated FinOps via Terraform + Git Pull Requests.</p>
+    <header>
+        <h1>🎯 Cloud Waste Sniper</h1>
+        <p>Automated FinOps via Terraform + Git Pull Requests</p>
+    </header>
 
-    <div class="card">
-        <h3>Detected Infrastructure Waste</h3>
-        <button class="btn" onclick="scanWaste()">🔍 Run AWS Scan</button>
-        <div id="statusMessage" class="status"></div>
-        
-        <table>
-            <thead>
-                <tr>
-                    <th>Resource ID</th>
-                    <th>Type</th>
-                    <th>Reason</th>
-                    <th>Est. Monthly Savings</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="wasteTableBody">
-                <!-- Rows populated by JS -->
-            </tbody>
-        </table>
+    <!-- KPI Metrics -->
+    <div class="kpi-grid">
+        <div class="kpi-card ebs">
+            <div class="kpi-title">Flagged Resources</div>
+            <div id="kpiCount" class="kpi-value">0</div>
+            <div class="kpi-subtitle">Requires remediation staging</div>
+        </div>
+        <div class="kpi-card ec2">
+            <div class="kpi-title">Monthly Storage Waste</div>
+            <div id="kpiMonthlyEBS" class="kpi-value">$0.00</div>
+            <div class="kpi-subtitle">Stale EBS unattached drives</div>
+        </div>
+        <div class="kpi-card savings">
+            <div class="kpi-title">Projected Annual Savings</div>
+            <div id="kpiSavings" class="kpi-value">$0.00</div>
+            <div class="kpi-subtitle">If complete remediation is merged</div>
+        </div>
+        <div class="kpi-card engine">
+            <div class="kpi-title">Cloud Pricing Engine</div>
+            <div id="kpiEngineVal" class="kpi-value" style="font-size: 1.25rem; font-weight:600; margin-top:5px;">Default Estimates</div>
+            <div id="kpiEngineBadge" class="engine-badge">MOCK STANDBY</div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls-container">
+        <button class="btn btn-scan" onclick="scanWaste()">🔍 Run AWS Scan</button>
+        <button class="btn btn-report" onclick="downloadReport()">📝 Download Executive Report</button>
+    </div>
+
+    <!-- Alert Box -->
+    <div id="statusAlert" class="status-alert"></div>
+
+    <!-- Visualizations section -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h4>Waste Cost Distribution (EBS vs EC2)</h4>
+            <div class="chart-wrapper">
+                <canvas id="wasteChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <h4>Cumulative Cost Savings (12-Month Projection)</h4>
+            <div class="chart-wrapper">
+                <canvas id="savingsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Findings Table -->
+    <div class="findings-card">
+        <h3>Detected Infrastructure Waste & Savings Opportunities</h3>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Resource ID</th>
+                        <th>Type</th>
+                        <th>Scan Finding / Reason</th>
+                        <th>Rate (Pricing Source)</th>
+                        <th>Est. Monthly Waste</th>
+                        <th>Remediation Action</th>
+                    </tr>
+                </thead>
+                <tbody id="wasteTableBody">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-secondary); padding: 30px;">
+                            No active scan. Click "Run AWS Scan" above to discover cost-saving opportunities.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
 <script>
-    async function scanWaste() {
-        const statusEl = document.getElementById('statusMessage');
-        const tableBody = document.getElementById('wasteTableBody');
-        
-        statusEl.textContent = 'Scanning...';
-        statusEl.className = 'status';
-        tableBody.innerHTML = '';
-        
-        try {
-            const response = await fetch('/api/scan');
-            const data = await response.json();
-            
-            if (data.status === 'success') {
-                statusEl.textContent = `Scan complete. Found ${data.data.length} wasteful resources.`;
-                
-                data.data.forEach(item => {
-                    const tr = document.createElement('tr');
-                    
-                    // Determine remediation details
-                    let actionBtn = '';
-                    if (item.type === 'ebs_volume') {
-                        actionBtn = `<button class="btn btn-danger" onclick="remediate('${item.resource_id}', 'count_zero', null)">Remove from TF</button>`;
-                    } else if (item.type === 'ec2_instance') {
-                        actionBtn = `<button class="btn btn-danger" onclick="remediate('${item.resource_id}', 'downsize_instance', '${item.suggested_downsize}')">Downsize TF</button>`;
-                    }
-                    
-                    tr.innerHTML = `
-                        <td><code>${item.resource_id}</code></td>
-                        <td>${item.type}</td>
-                        <td>${item.reason}</td>
-                        <td>$${(item.estimated_monthly_waste || item.estimated_monthly_savings).toFixed(2)}</td>
-                        <td>${actionBtn}</td>
-                    `;
-                    tableBody.appendChild(tr);
-                });
-            } else {
-                statusEl.textContent = 'Error scanning waste.';
-                statusEl.className = 'status error';
-            }
-        } catch (error) {
-            statusEl.textContent = 'Network error during scan.';
-            statusEl.className = 'status error';
-        }
+    // Global chart instances
+    let wasteChart = null;
+    let savingsChart = null;
+
+    // Helper to format currency
+    function formatCurrency(val) {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
     }
 
+    // Displays alerts cleanly
+    function showAlert(message, type = 'info') {
+        const alertEl = document.getElementById('statusAlert');
+        alertEl.textContent = message;
+        alertEl.className = `status-alert ${type}`;
+    }
+
+    // Handles JSON API error extraction
     function extractErrorMessage(data) {
-        // FastAPI detail can be a string, an object, or an array of validation errors
-        if (data.detail) {
+        if (data && data.detail) {
             if (typeof data.detail === 'string') return data.detail;
             if (Array.isArray(data.detail)) {
                 return data.detail.map(e => e.msg || JSON.stringify(e)).join('; ');
             }
             return JSON.stringify(data.detail);
         }
-        if (data.message) return data.message;
+        if (data && data.message) return data.message;
         return JSON.stringify(data);
     }
 
-    async function remediate(resourceId, remType, newValue) {
-        const statusEl = document.getElementById('statusMessage');
-        statusEl.textContent = `Initiating Remediation for ${resourceId}...`;
-        statusEl.className = 'status';
-        
+    // Initializes empty or defaults for charts
+    function initCharts() {
+        const ctxWaste = document.getElementById('wasteChart').getContext('2d');
+        const ctxSavings = document.getElementById('savingsChart').getContext('2d');
+
+        wasteChart = new Chart(ctxWaste, {
+            type: 'doughnut',
+            data: {
+                labels: ['Unattached EBS Volumes', 'Idle EC2 Compute'],
+                datasets: [{
+                    data: [0, 0],
+                    backgroundColor: [
+                        '#8a2be2', // EBS
+                        '#00d2ff'  // EC2
+                    ],
+                    borderColor: 'rgba(255,255,255,0.05)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#f3f4f6', font: { family: 'Inter', size: 12 } }
+                    }
+                }
+            }
+        });
+
+        savingsChart = new Chart(ctxSavings, {
+            type: 'bar',
+            data: {
+                labels: ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8', 'M9', 'M10', 'M11', 'M12'],
+                datasets: [{
+                    label: 'Cumulative Savings ($)',
+                    data: Array(12).fill(0),
+                    backgroundColor: 'rgba(0, 230, 118, 0.45)',
+                    borderColor: '#00e676',
+                    borderWidth: 2,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.03)' } },
+                    y: { ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.03)' } }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    // Document Ready
+    window.addEventListener('DOMContentLoaded', () => {
+        initCharts();
+    });
+
+    // 1. Core Scanning logic
+    async function scanWaste() {
+        const tableBody = document.getElementById('wasteTableBody');
+        showAlert('Connecting to AWS APIs & Crawling Real-Time Pricing via SERP...', 'info');
+
+        // Populate Skeletons
+        tableBody.innerHTML = `
+            <tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr>
+            <tr class="skeleton-row"><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td><td><div class="skeleton-bar"></div></td></tr>
+        `;
+
         try {
-            const body = {
-                    resource_id: resourceId,
-                    remediation_type: remType
-                };
-                if (newValue) {
-                    body.new_value = newValue;
+            const response = await fetch('/api/scan');
+            const data = await response.json();
+
+            if (response.ok && data.status === 'success') {
+                const items = data.data;
+                const engine = data.pricing_engine;
+
+                // 1. Render Metrics Card values
+                document.getElementById('kpiCount').textContent = items.length;
+                
+                // Calculate Monthly impacts
+                let totalEbsWaste = 0;
+                let totalEc2Waste = 0;
+
+                items.forEach(i => {
+                    const cost = i.estimated_monthly_waste || i.estimated_monthly_savings || 0;
+                    if (i.type === 'ebs_volume') totalEbsWaste += cost;
+                    if (i.type === 'ec2_instance') totalEc2Waste += cost;
+                });
+
+                const totalMonthly = totalEbsWaste + totalEc2Waste;
+                const totalAnnual = totalMonthly * 12;
+
+                document.getElementById('kpiMonthlyEBS').textContent = formatCurrency(totalEbsWaste);
+                document.getElementById('kpiSavings').textContent = formatCurrency(totalAnnual);
+                
+                // Pricing Engine Text & Badges
+                const engineValEl = document.getElementById('kpiEngineVal');
+                const engineBadgeEl = document.getElementById('kpiEngineBadge');
+                
+                engineValEl.textContent = engine;
+                if (engine.includes("Bright Data")) {
+                    engineBadgeEl.textContent = "LIVE REAL-TIME";
+                    engineBadgeEl.className = "engine-badge scraped";
+                } else {
+                    engineBadgeEl.textContent = "STANDBY ESTIMATES";
+                    engineBadgeEl.className = "engine-badge";
                 }
 
-                const response = await fetch('/api/remediate', {
+                // 2. Render Charts
+                // Update waste distributions
+                wasteChart.data.datasets[0].data = [totalEbsWaste, totalEc2Waste];
+                wasteChart.update();
+
+                // Update cumulative projection arrays
+                const cumulativeValues = [];
+                for (let m = 1; m <= 12; m++) {
+                    cumulativeValues.push(totalMonthly * m);
+                }
+                savingsChart.data.datasets[0].data = cumulativeValues;
+                savingsChart.update();
+
+                // 3. Render Table
+                tableBody.innerHTML = '';
+                if (items.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No cloud waste items detected in scan! Awesome Job.</td></tr>`;
+                    showAlert('Success! Scan complete. No wasteful cloud assets found.', 'success');
+                    return;
+                }
+
+                items.forEach(item => {
+                    const tr = document.createElement('tr');
+                    const cost = item.estimated_monthly_waste || item.estimated_monthly_savings || 0;
+                    
+                    // Style Dynamic Badges
+                    const typeBadge = item.type === 'ebs_volume' 
+                        ? `<span class="badge badge-ebs">EBS Volume</span>` 
+                        : `<span class="badge badge-ec2">EC2 Instance</span>`;
+                    
+                    const priceSourceBadge = item.pricing_source === 'brightdata'
+                        ? `<span class="badge badge-live">Live</span>`
+                        : `<span class="badge badge-default">Default</span>`;
+
+                    // Generate rate label text
+                    let rateLabel = "";
+                    if (item.type === 'ebs_volume') {
+                        rateLabel = `${formatCurrency(item.unit_price)}/GB-month`;
+                    } else if (item.type === 'ec2_instance') {
+                        rateLabel = `${formatCurrency(item.unit_price)}/hr on-demand`;
+                    }
+
+                    // Staging action button
+                    let actionBtnHtml = '';
+                    if (item.type === 'ebs_volume') {
+                        actionBtnHtml = `<button class="btn-action" onclick="remediate(this, '${item.resource_id}', 'count_zero')">Remove from TF</button>`;
+                    } else if (item.type === 'ec2_instance') {
+                        actionBtnHtml = `<button class="btn-action" onclick="remediate(this, '${item.resource_id}', 'downsize_instance', '${item.suggested_downsize}')">Downsize TF</button>`;
+                    }
+
+                    tr.innerHTML = `
+                        <td><code>${item.resource_id}</code></td>
+                        <td>${typeBadge}</td>
+                        <td>${item.reason}</td>
+                        <td>${rateLabel} ${priceSourceBadge}</td>
+                        <td style="font-weight:600; color: #f3f4f6;">${formatCurrency(cost)}</td>
+                        <td>${actionBtnHtml}</td>
+                    `;
+                    tableBody.appendChild(tr);
+                });
+
+                showAlert(`Scan successful! Located ${items.length} wasteful resources.`, 'success');
+            } else {
+                showAlert(`Scan failed: ${extractErrorMessage(data)}`, 'error');
+            }
+        } catch (err) {
+            showAlert(`Network connection error during Scan: ${err.message || err}`, 'error');
+        }
+    }
+
+    // 2. Automated Remediation actions
+    async function remediate(btnElement, resourceId, remType, newValue = null) {
+        btnElement.disabled = true;
+        const originalText = btnElement.textContent;
+        btnElement.textContent = "Staging...";
+        
+        showAlert(`Initiating Terraform State Mapping and Code Modifications for ${resourceId}...`, 'info');
+
+        try {
+            const body = {
+                resource_id: resourceId,
+                remediation_type: remType
+            };
+            if (newValue) {
+                body.new_value = newValue;
+            }
+
+            const response = await fetch('/api/remediate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
             const data = await response.json();
-            
+
             if (response.ok && data.status === 'success') {
-                statusEl.textContent = `Success! ${data.message}`;
+                showAlert(`Success! ${data.message}`, 'success');
+                btnElement.textContent = "Staged";
+                btnElement.style.backgroundColor = "var(--color-savings)";
+                btnElement.style.boxShadow = "0 2px 8px rgba(0, 230, 118, 0.2)";
             } else if (data.status === 'partial_success') {
-                statusEl.textContent = `Warning: ${data.message}`;
-                statusEl.className = 'status error';
+                showAlert(`Warning: ${data.message}`, 'error');
+                btnElement.disabled = false;
+                btnElement.textContent = originalText;
             } else {
-                statusEl.textContent = `Failed: ${extractErrorMessage(data)}`;
-                statusEl.className = 'status error';
+                showAlert(`Failed: ${extractErrorMessage(data)}`, 'error');
+                btnElement.disabled = false;
+                btnElement.textContent = originalText;
             }
-        } catch (error) {
-            statusEl.textContent = `Network error: ${error.message || error}`;
-            statusEl.className = 'status error';
+        } catch (err) {
+            showAlert(`Remediation error: ${err.message || err}`, 'error');
+            btnElement.disabled = false;
+            btnElement.textContent = originalText;
+        }
+    }
+
+    // 3. Report generation downloader
+    async function downloadReport() {
+        showAlert('Scanning infrastructure and generating FinOps report...', 'info');
+
+        try {
+            const response = await fetch('/api/report');
+            if (!response.ok) {
+                const errData = await response.json();
+                showAlert(`Report generation failed: ${extractErrorMessage(errData)}`, 'error');
+                return;
+            }
+
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            
+            // Build temporary anchor and click it to trigger browser download
+            const tempAnchor = document.createElement('a');
+            tempAnchor.href = downloadUrl;
+            tempAnchor.download = "FinOps_Executive_Report.md";
+            document.body.appendChild(tempAnchor);
+            tempAnchor.click();
+            
+            // Clean up resources
+            document.body.removeChild(tempAnchor);
+            window.URL.revokeObjectURL(downloadUrl);
+            
+            showAlert('FinOps Executive Report downloaded successfully!', 'success');
+        } catch (err) {
+            showAlert(`Network failure generating report: ${err.message || err}`, 'error');
         }
     }
 </script>

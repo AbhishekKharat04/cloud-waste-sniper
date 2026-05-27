@@ -17,6 +17,10 @@ class FinOpsReporter:
     _RESOURCE_TYPE_LABELS = {
         "ebs_volume": "EBS Volume (Unattached)",
         "ec2_instance": "EC2 Instance (Idle / Over-provisioned)",
+        "ebs_snapshot": "EBS Snapshot (Orphaned)",
+        "elastic_ip": "Elastic IP (Unassociated)",
+        "nat_gateway": "NAT Gateway (Idle)",
+        "load_balancer": "Load Balancer (No Targets)",
     }
 
     def __init__(self, waste_items: List[Dict]):
@@ -57,14 +61,28 @@ class FinOpsReporter:
     def _build_exec_summary(self) -> str:
         total_monthly = self._total_monthly()
         total_annual = total_monthly * 12
+
+        # Build per-category breakdown dynamically
+        categories = {}
+        for item in self.waste_items:
+            t = item['type']
+            categories[t] = categories.get(t, 0) + self._monthly_cost(item)
+
+        category_rows = []
+        for raw_type, monthly in sorted(categories.items(), key=lambda x: -x[1]):
+            label = self._type_label(raw_type)
+            category_rows.append(
+                f"| **{label}** | ${monthly:,.2f} | ${monthly * 12:,.2f} |"
+            )
+        rows_str = "\n".join(category_rows)
+
         return (
             f"## 📊 Executive Summary\n\n"
             f"This report provides an executive-level overview of detected cloud infrastructure waste and potential cost savings.\n\n"
-            f"| Metric | Monthly Impact | Annual Impact (Projected) |\n"
+            f"| Category | Monthly Impact | Annual Impact (Projected) |\n"
             f"| :--- | :--- | :--- |\n"
-            f"| **Total Stale Storage Waste** | ${sum(self._monthly_cost(i) for i in self.waste_items if i['type'] == 'ebs_volume'):,.2f} | ${sum(self._monthly_cost(i) for i in self.waste_items if i['type'] == 'ebs_volume') * 12:,.2f} |\n"
-            f"| **Total Idle Compute Waste**  | ${sum(self._monthly_cost(i) for i in self.waste_items if i['type'] == 'ec2_instance'):,.2f} | ${sum(self._monthly_cost(i) for i in self.waste_items if i['type'] == 'ec2_instance') * 12:,.2f} |\n"
-            f"| **Total Cloud Waste Saved**   | **${total_monthly:,.2f}** | **${total_annual:,.2f}** |"
+            f"{rows_str}\n"
+            f"| **TOTAL CLOUD WASTE** | **${total_monthly:,.2f}** | **${total_annual:,.2f}** |"
         )
 
     def _build_findings_table(self) -> str:
@@ -89,7 +107,11 @@ class FinOpsReporter:
             "## 🛠️ Remediation Action Plan\n\n"
             "Automated infrastructure-as-code patches have been staged via localized Git branches to minimize waste safely:\n"
             "1. **Unattached EBS Volumes:** Staged code modifications to set `count = 0` on matching resource blocks inside your Terraform configurations.\n"
-            "2. **Over-provisioned EC2 Compute:** Staged instance downsizing (e.g. from `t3.2xlarge` to `t3.medium`) to cut active runtime cost while preserving essential performance capacity.\n\n"
+            "2. **Over-provisioned EC2 Compute:** Staged instance downsizing (e.g. from `t3.2xlarge` to `t3.medium`) to cut active runtime cost while preserving essential performance capacity.\n"
+            "3. **Orphaned EBS Snapshots:** Identified snapshots whose parent volumes no longer exist — candidates for deletion.\n"
+            "4. **Unassociated Elastic IPs:** IPs incurring hourly charges without an attached resource — release immediately.\n"
+            "5. **Idle NAT Gateways:** Gateways processing zero traffic — evaluate for decommission.\n"
+            "6. **Empty Load Balancers:** ALBs with no healthy targets — remove or reconfigure target groups.\n\n"
             "*Note: Real-time remediations are safely isolated on the branch `finops/optimize-resources` and will not mutate live resources until reviewed, approved, and merged.*"
         )
 

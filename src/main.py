@@ -1,6 +1,7 @@
 import os
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -12,8 +13,13 @@ from src.scraper import AWSSniper
 from src.mapper import StateMapper, TFModifier
 from src.git_engine import GitPRCreator
 from src.reporter import FinOpsReporter
+from src.price_intel import CloudPricingIntelligence
+from src.history import ScanHistory
 
 app = FastAPI(title="Cloud Waste Sniper API")
+
+# Global scan history singleton for audit trail
+scan_history = ScanHistory()
 
 # Ensure templates directory exists
 templates_dir = os.path.join(os.path.dirname(__file__), "templates")
@@ -39,6 +45,7 @@ async def scan_waste():
     try:
         waste = sniper.scan_all()
         pricing_engine = "Bright Data Real-Time Scraped Engine" if sniper.live_pricing else "Default Estimates"
+        scan_history.record_scan(waste, pricing_engine)
         return {
             "status": "success", 
             "data": waste,
@@ -89,6 +96,7 @@ async def remediate_waste(req: RemediateRequest):
             raise HTTPException(status_code=500, detail=f"Failed to modify {tf_path}")
         elif status == "skipped":
             # Idempotent skip - do NOT create a PR (since git commit would fail)
+            scan_history.record_remediation(tf_type, tf_name, req.remediation_type, "skipped")
             return {
                 "status": "success",
                 "message": f"Resource {tf_type}.{tf_name} is already fully optimized. No further Git commit necessary."
@@ -100,8 +108,51 @@ async def remediate_waste(req: RemediateRequest):
         
         if not pr_success:
             return {"status": "partial_success", "message": "File modified, but Git PR generation failed."}
-            
+        
+        scan_history.record_remediation(tf_type, tf_name, req.remediation_type, "success")
         return {"status": "success", "message": f"Successfully processed {tf_type}.{tf_name} and committed/PR'd changes."}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/price-intel")
+async def get_price_intel():
+    """Returns multi-cloud competitive pricing comparison."""
+    intel = CloudPricingIntelligence()
+    try:
+        comparison = intel.fetch_comparison()
+        return {"status": "success", "data": comparison}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/history")
+async def get_history():
+    """Returns scan history audit trail."""
+    return {
+        "status": "success",
+        "scans": scan_history.get_scans(),
+        "stats": scan_history.get_stats()
+    }
+
+@app.get("/api/remediation-log")
+async def get_remediation_log():
+    """Returns remediation activity log."""
+    return {
+        "status": "success",
+        "remediations": scan_history.get_remediations()
+    }
+
+@app.get("/api/settings")
+async def get_settings():
+    """Returns current system configuration status (never expose secrets)."""
+    return {
+        "status": "success",
+        "settings": {
+            "mock_mode": os.getenv("MOCK_AWS", "false").lower() == "true",
+            "live_pricing": os.getenv("USE_REAL_PRICING", "false").lower() == "true",
+            "brightdata_connected": bool(os.getenv("BRIGHTDATA_API_KEY", "").strip()),
+            "github_connected": bool(os.getenv("GITHUB_TOKEN", "").strip()),
+            "aws_region": os.getenv("AWS_REGION", "us-east-1"),
+            "repo_path": os.getenv("REPO_PATH", "."),
+        }
+    }

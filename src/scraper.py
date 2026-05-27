@@ -158,14 +158,24 @@ class AWSSniper:
         # 2. Get unattached volumes
         unattached_volumes = []
         if self.mock_mode:
-            # Simulated unattached gp3 volume (100 GB size)
+            # Simulated unattached gp3 volume #1 (100 GB)
             unattached_volumes.append({
                 "resource_id": "vol-0123456789abcdef0",
                 "type": "ebs_volume",
-                "reason": "Unattached (State=available)",
+                "reason": "Unattached for 30+ days (State=available)",
                 "size_gb": 100,
                 "unit_price": unit_price,
-                "estimated_monthly_waste": 100 * unit_price,
+                "estimated_monthly_waste": round(100 * unit_price, 2),
+                "pricing_source": pricing_source
+            })
+            # Simulated unattached gp3 volume #2 (200 GB)
+            unattached_volumes.append({
+                "resource_id": "vol-0a1b2c3d4e5f67890",
+                "type": "ebs_volume",
+                "reason": "Unattached, snapshot backup exists",
+                "size_gb": 200,
+                "unit_price": unit_price,
+                "estimated_monthly_waste": round(200 * unit_price, 2),
                 "pricing_source": pricing_source
             })
         else:
@@ -221,10 +231,25 @@ class AWSSniper:
             idle_compute.append({
                 "resource_id": "i-0abc12345def67890",
                 "type": "ec2_instance",
-                "reason": "Max CPU < 3% over 4 days",
+                "reason": "Max CPU < 3% over 7 days",
                 "suggested_downsize": "t3.medium",
                 "unit_price": t3_2xl_price,
-                "estimated_monthly_savings": estimated_savings,
+                "estimated_monthly_savings": round(estimated_savings, 2),
+                "pricing_source": pricing_source
+            })
+            # Zombie instance — near-zero utilization over 14 days
+            t3_sm_price = _DEFAULT_T3_MD_PRICE_HR * 0.5  # t3.small is ~half of t3.medium
+            if pricing_source == "brightdata":
+                scale_ratio = t3_2xl_price / _DEFAULT_T3_2XL_PRICE_HR
+                t3_sm_price = t3_sm_price * scale_ratio
+            zombie_savings = (t3_2xl_price - t3_sm_price) * 24 * 30
+            idle_compute.append({
+                "resource_id": "i-0fed98765cba43210",
+                "type": "ec2_instance",
+                "reason": "Max CPU < 1% over 14 days (zombie)",
+                "suggested_downsize": "t3.small",
+                "unit_price": t3_2xl_price,
+                "estimated_monthly_savings": round(zombie_savings, 2),
                 "pricing_source": pricing_source
             })
         else:
@@ -240,9 +265,76 @@ class AWSSniper:
 
         return idle_compute
 
+    def scan_orphaned_resources(self) -> List[Dict]:
+        """Scans for orphaned AWS resources: snapshots, EIPs, NAT gateways, LBs."""
+        orphaned = []
+
+        if self.mock_mode:
+            orphaned.append({
+                "resource_id": "snap-0123456789abcdef",
+                "type": "ebs_snapshot",
+                "reason": "Orphaned \u2014 parent volume deleted",
+                "estimated_monthly_waste": 5.00,
+                "pricing_source": "default"
+            })
+            orphaned.append({
+                "resource_id": "eip-12345678",
+                "type": "elastic_ip",
+                "reason": "Unassociated Elastic IP",
+                "estimated_monthly_waste": 3.60,
+                "pricing_source": "default"
+            })
+            orphaned.append({
+                "resource_id": "nat-0abcdef1234567890",
+                "type": "nat_gateway",
+                "reason": "Zero bytes processed in 14 days",
+                "estimated_monthly_waste": 32.40,
+                "pricing_source": "default"
+            })
+            orphaned.append({
+                "resource_id": "lb-app-legacy-lb",
+                "type": "load_balancer",
+                "reason": "No healthy targets registered",
+                "estimated_monthly_waste": 16.43,
+                "pricing_source": "default"
+            })
+        else:
+            # Live scanning for orphaned resources would use boto3 here
+            try:
+                # Orphaned snapshots: snapshots whose source volume no longer exists
+                snapshots = self.ec2_client.describe_snapshots(OwnerIds=['self'])['Snapshots']
+                volumes = {v['VolumeId'] for page in self.ec2_client.get_paginator('describe_volumes').paginate() for v in page['Volumes']}
+                for snap in snapshots:
+                    if snap.get('VolumeId') and snap['VolumeId'] not in volumes:
+                        orphaned.append({
+                            "resource_id": snap['SnapshotId'],
+                            "type": "ebs_snapshot",
+                            "reason": "Orphaned \u2014 parent volume deleted",
+                            "estimated_monthly_waste": round(snap.get('VolumeSize', 0) * 0.05, 2),
+                            "pricing_source": "default"
+                        })
+
+                # Unassociated Elastic IPs
+                addresses = self.ec2_client.describe_addresses()['Addresses']
+                for addr in addresses:
+                    if 'AssociationId' not in addr:
+                        orphaned.append({
+                            "resource_id": addr.get('AllocationId', 'unknown'),
+                            "type": "elastic_ip",
+                            "reason": "Unassociated Elastic IP",
+                            "estimated_monthly_waste": 3.60,
+                            "pricing_source": "default"
+                        })
+            except Exception as e:
+                logger.error(f"Error scanning orphaned resources: {e}")
+
+        return orphaned
+
     def scan_all(self) -> List[Dict]:
         """Runs all waste scans."""
         waste = []
         waste.extend(self.scan_unattached_volumes())
         waste.extend(self.scan_idle_compute())
+        waste.extend(self.scan_orphaned_resources())
         return waste
+

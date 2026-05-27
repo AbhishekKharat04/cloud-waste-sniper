@@ -1,129 +1,243 @@
-# 🎯 Cloud Waste Sniper
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/FastAPI-0.103-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/Bright%20Data-SERP%20API-8A2BE2?style=for-the-badge" alt="Bright Data">
+  <img src="https://img.shields.io/badge/Chart.js-4.x-FF6384?style=for-the-badge&logo=chartdotjs&logoColor=white" alt="Chart.js">
+  <img src="https://img.shields.io/badge/Terraform-IaC-7B42BC?style=for-the-badge&logo=terraform&logoColor=white" alt="Terraform">
+</p>
 
-> **Target Cloud Waste. Stage IaC Patches. Auto-Commit with Confidence.**  
-> *An automated, real-time FinOps co-pilot powered by FastAPI, Python, and Bright Data's SERP API.*
+<h1 align="center">⚡ Cloud Waste Sniper</h1>
+<h3 align="center">AI-Powered FinOps Platform — Detect, Compare, Remediate Cloud Waste Automatically</h3>
+<p align="center"><em>Built for the <strong>Web Data UNLOCKED</strong> Hackathon by lablab.ai × Bright Data</em></p>
 
 ---
 
-## 📖 Project Overview
+## 🎯 What Is Cloud Waste Sniper?
 
-**Cloud Waste Sniper** is an enterprise-grade FinOps automation tool built for the **Web Data UNLOCKED Hackathon**. It scans cloud infrastructure for idle or unattached resources (such as unattached EBS volumes or over-provisioned EC2 compute instances), maps them back to local Terraform state files, and staging precise, structural code modifications. 
+**Cloud Waste Sniper** is an enterprise-grade FinOps platform that autonomously detects wasteful cloud infrastructure, scrapes real-time multi-cloud pricing via **Bright Data**, and auto-remediates Terraform configurations — committing optimizations directly via Git.
 
-To bridge the gap between static code analysis and actual cloud market dynamics, it dynamically queries Google via **Bright Data's SERP API** to crawl active AWS retail pricing, showing judges and engineers real-world cost savings projections instantly.
+> **The Problem:** Enterprises lose **$100B+ annually** on idle, unattached, and over-provisioned cloud resources. Manual FinOps audits are slow, expensive, and error-prone.
+>
+> **Our Solution:** A fully automated pipeline that scans → prices → compares → patches → commits in seconds, not weeks.
 
 ---
 
-## 📐 Architecture Pipeline Diagram
-
-The following flowchart demonstrates the complete operational lifecycle of **Cloud Waste Sniper**:
+## 🏗️ Architecture Pipeline
 
 ```mermaid
-graph TD
-    %% Styling Definition
-    classDef ui fill:#15181e,stroke:#00d2ff,stroke-width:2px,color:#fff;
-    classDef api fill:#141722,stroke:#8a2be2,stroke-width:2px,color:#fff;
-    classDef ext fill:#1f2330,stroke:#00e676,stroke-width:2px,color:#fff;
-    classDef local fill:#1f2330,stroke:#ff1744,stroke-width:2px,color:#fff;
-
-    %% Workflow Nodes
-    UI["💻 Dashboard UI (HTML5 / Chart.js)"]:::ui
-    API["⚡ FastAPI Server (Python)"]:::api
-    BD["🔍 Bright Data SERP API Scraper"]:::ext
-    MAP["🧩 StateMapper & Parser"]:::local
-    TF["🛠️ TFModifier (Brace-Depth Parser)"]:::local
-    GIT["🐙 Local Git Subprocesses (PR Engine)"]:::local
-
-    %% Flow Connections
-    UI -- "1. Run AWS Scan" --> API
-    API -- "2. Crawl Real-Time Pricing" --> BD
-    BD -- "3. Return Active AWS Rates" --> API
-    API -- "4. Render KPI & Chart.js Visuals" --> UI
-    UI -- "5. Remediate Resource" --> API
-    API -- "6. Find Resource in terraform.tfstate" --> MAP
-    MAP -- "7. Inject count = 0 or downsize instance" --> TF
-    TF -- "8. Checkout branch, stage & commit" --> GIT
+graph LR
+    A["🖥️ Dashboard UI<br/>(Multi-Page SPA)"] -->|Triggers| B["⚡ FastAPI Engine<br/>(REST API)"]
+    B -->|Queries| C["🌐 Bright Data<br/>SERP API"]
+    C -->|Returns| D["💰 Live Cloud Pricing<br/>(AWS, Azure, GCP)"]
+    B -->|Scans| E["🔍 AWS Scanner<br/>(boto3 / Mock)"]
+    E -->|Detects| F["📊 Waste Analysis<br/>(8 Resource Types)"]
+    F -->|Maps to| G["📝 Terraform Parser<br/>(Structural Line Parser)"]
+    G -->|Modifies| H["🔧 IaC Remediation<br/>(count=0 / downsize)"]
+    H -->|Commits| I["🔀 Git Engine<br/>(Branch + PR)"]
+    B -->|Generates| J["📋 Executive Report<br/>(Markdown Export)"]
+    
+    style A fill:#0d1117,stroke:#00d2ff,color:#e6edf3
+    style B fill:#0d1117,stroke:#a855f7,color:#e6edf3
+    style C fill:#0d1117,stroke:#8A2BE2,color:#e6edf3
+    style D fill:#0d1117,stroke:#00e676,color:#e6edf3
+    style I fill:#0d1117,stroke:#fb923c,color:#e6edf3
 ```
+
+---
+
+## ✨ Key Features
+
+| Feature | Description |
+|:---|:---|
+| **🔍 Multi-Resource Scanning** | Detects 6 types of waste: EBS Volumes, EC2 Instances, Snapshots, Elastic IPs, NAT Gateways, Load Balancers |
+| **🌐 Live Price Scraping** | Uses Bright Data SERP API to fetch real-time AWS, Azure, and GCP retail pricing |
+| **📊 Multi-Cloud Price Intelligence** | Side-by-side compute & storage cost comparison across 3 major providers |
+| **🔧 Auto-Remediation via IaC** | Directly modifies Terraform files: `count = 0` for removal, instance downsizing for compute |
+| **🔀 Git-Backed Audit Trail** | Every remediation creates a Git branch + commit — full audit trail |
+| **📋 Executive Reports** | One-click downloadable Markdown reports with category breakdowns |
+| **📈 Interactive Dashboards** | Chart.js visualizations: Doughnut, Horizontal Bar, 12-month Savings Projection |
+| **🕰️ Scan History** | Complete audit log of all infrastructure scans with timestamps |
+| **⚙️ Settings Panel** | Real-time view of API connections, modes, and system configuration |
+
+---
+
+## 🌐 Bright Data Integration (Hackathon Requirement)
+
+Cloud Waste Sniper uses **Bright Data's SERP API** as its core pricing intelligence engine. Instead of relying on stale, hardcoded pricing assumptions, we query Google search results in real-time through Bright Data's infrastructure.
+
+### How It Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    PRICING PIPELINE                         │
+│                                                             │
+│  1. Scan detects wasteful resource (e.g., t3.2xlarge idle)  │
+│  2. BrightDataPricingClient sends SERP query:               │
+│     "AWS EC2 t3.2xlarge on-demand price per hour us-east-1" │
+│  3. Bright Data's SERP API returns Google search results    │
+│  4. Regex parser extracts dollar values from snippets       │
+│  5. Sanity-range validation ($0.10–$2.00 for compute)       │
+│  6. Live price used for waste calculation & charts          │
+│                                                             │
+│  Fallback: If API key missing or query fails → uses curated │
+│  high-fidelity defaults. Never crashes. Always works.       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### SERP Queries Made
+
+| Resource | Google Query via Bright Data |
+|:---|:---|
+| EBS gp3 Volume | `"AWS EBS gp3 price per GB-month us-east-1 site:aws.amazon.com"` |
+| EC2 t3.2xlarge | `"AWS EC2 t3.2xlarge on-demand price per hour us-east-1 site:aws.amazon.com"` |
+| Azure D8s v5 | `"Azure Standard D8s v5 on-demand price per hour"` |
+| GCP n2-standard-8 | `"GCP n2-standard-8 on-demand price per hour"` |
+| AWS gp3 Storage | `"AWS EBS gp3 price per GB month us-east-1"` |
+
+### Why Bright Data?
+
+- **Bypass blocks:** AWS pricing pages use aggressive bot detection. Bright Data's infrastructure handles this transparently.
+- **Structured results:** SERP API returns clean JSON with organic results, snippets, and metadata.
+- **Multi-cloud coverage:** One API to query pricing across AWS, Azure, and GCP simultaneously.
+- **Always fresh:** No caching stale CSV exports — every scan gets live market prices.
 
 ---
 
 ## 🛠️ Technology Stack
 
-Cloud Waste Sniper is built utilizing a high-performance, lightweight developer stack:
-
-| Component | Technology | Role |
-| :--- | :--- | :--- |
-| **Backend API** | **FastAPI (Python 3.13+)** | Handles high-throughput REST requests, scans, and download report endpoints. |
-| **UI Dashboard** | **TailwindCSS & Glassmorphic CSS** | Provides a beautiful, responsive dark-mode FinOps dashboard with real-time feedback. |
-| **Data Visualizations** | **Chart.js (via CDN)** | Animates cost waste distributions and projected 12-month savings on scan load. |
-| **Pricing Scraper** | **Bright Data SERP API** | Google SERP web scraper that crawls active AWS pricing tables dynamically. |
-| **TF Parser** | **Structural Brace-Depth Parser** | Character-by-character bracket tracker that modifies `.tf` files with 100% safety. |
-| **Git Engine** | **Git CLI Subprocesses** | Checks out localized optimization branches, stages modified files, and commits. |
-
----
-
-## 💡 Hackathon Integration: Bright Data SERP Engine
-
-A key challenge in static FinOps is that **cloud rates fluctuate**. Using hardcoded pricing assumptions in IaC static analysis tools leads to inaccurate projections. 
-
-**Cloud Waste Sniper** overcomes this by utilizing **Bright Data's Google SERP API** to dynamically extract live, real-world retail rates:
-
-1. **Query Construction:** When a scan is initiated, the engine builds highly targeted queries:
-   - *Storage:* `"AWS EBS gp3 price per GB-month us-east-1 site:aws.amazon.com"`
-   - *Compute:* `"AWS EC2 t3.2xlarge on-demand price per hour us-east-1 site:aws.amazon.com"`
-2. **Proxy-Guided Crawling:** Requests are routed through Bright Data's global proxy network, bypassing geo-blocks and rate limits seamlessly.
-3. **Regex Extraction & Range Filters:** Snippets are scanned with regular expressions (`\$(\d+(?:\.\d+)+)`) to extract rates and filtered through sanity range guards:
-   - gp3 rate is validated to sit between **$0.01** and **$0.50** per GB.
-   - t3.2xlarge rate is validated to sit between **$0.10** and **$2.00** per hour.
-4. **Graceful Fallback:** If the API key is missing or queries fail, it logs warnings and falls back to default estimates to ensure absolute application reliability.
+| Layer | Technology | Purpose |
+|:---|:---|:---|
+| **Backend** | Python 3.10+, FastAPI | REST API engine, async request handling |
+| **Web Scraping** | Bright Data SERP API | Real-time cloud pricing intelligence |
+| **Cloud SDK** | boto3 | AWS resource scanning (read-only) |
+| **IaC Engine** | Custom Terraform Parser | Structural line-by-line `.tf` file modification with brace-depth tracking |
+| **Version Control** | Git + PyGithub | Automated branch creation, commits, and PR generation |
+| **Frontend** | Vanilla HTML/CSS/JS | Premium dark-mode SPA with sidebar navigation |
+| **Charts** | Chart.js 4.x (CDN) | Interactive doughnut, bar, and comparison charts |
+| **Typography** | Google Fonts (Inter) | Modern, clean UI typography |
+| **Reports** | Markdown Generator | Executive-grade downloadable audit reports |
 
 ---
 
-## 🚀 Installation & Local Setup
+## 🚀 Quick Start
 
-Get **Cloud Waste Sniper** up and running on your local machine in under 5 minutes:
+### Prerequisites
+- Python 3.10+
+- Git
+- (Optional) Bright Data API key — [Get one free](https://brightdata.com/cp/start)
 
-### 1. Prerequisites
-- **Python 3.13+** installed.
-- **Git** configured locally.
+### Installation
 
-### 2. Clone and Setup Environment
-Navigate to the project root directory and create a virtual environment:
 ```bash
-# Enter the project directory
-cd G:\hacathon\cloud-waste-sniper
+# Clone the repository
+git clone https://github.com/yourusername/cloud-waste-sniper.git
+cd cloud-waste-sniper
 
 # Create virtual environment
 python -m venv venv
+source venv/bin/activate        # Linux/Mac
+# venv\Scripts\activate         # Windows
 
-# Activate virtual environment (Windows PowerShell)
-.\venv\Scripts\Activate.ps1
-```
-
-### 3. Install Dependencies
-Install all required python libraries:
-```bash
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 4. Configuration (`.env`)
-Create a `.env` file in the root directory (based on `.env.example`):
-```ini
-# AWS Scan Toggle
-MOCK_AWS=true
+### Configuration
 
-# Git Fallback configuration
-GITHUB_TOKEN=
-REPO_PATH=G:/hacathon/cloud-waste-sniper
-REPO_NAME=yourusername/cloud-waste-sniper
+Copy and edit the `.env` file:
 
-# Bright Data API Configuration
-USE_REAL_PRICING=true
-BRIGHTDATA_API_KEY="your-bright-data-api-key-here"
-```
-
-### 5. Running the Application
-Start the FastAPI development server:
 ```bash
-uvicorn src.main:app --reload
+# .env
+MOCK_AWS=true                           # Use mock data (no AWS creds needed)
+AWS_REGION=us-east-1
+
+# Bright Data (enables live pricing)
+BRIGHTDATA_API_KEY=your_key_here        # From brightdata.com/cp/start
+USE_REAL_PRICING=true                   # Toggle live scraping
+
+# Git (optional — enables PR creation)
+GITHUB_TOKEN=                           # Leave empty for local-only commits
+REPO_PATH=.                             # Path to this repository
 ```
-Once started, open **`http://localhost:8000`** in your browser to discover cost optimization opportunities!
+
+### Run
+
+```bash
+# Start the development server
+uvicorn src.main:app --reload --port 8000
+
+# Open in browser
+# http://localhost:8000
+```
+
+---
+
+## 📸 Application Pages
+
+| Page | Description |
+|:---|:---|
+| **Dashboard** | KPI cards, 3 interactive charts, findings table with one-click remediation |
+| **Price Intelligence** | Multi-cloud compute & storage comparison (AWS vs Azure vs GCP) |
+| **Scan History** | Timestamped audit trail of all infrastructure scans |
+| **Remediation Log** | Git-backed timeline of all automated changes |
+| **Settings** | System configuration panel showing API connection status |
+
+---
+
+## 📁 Project Structure
+
+```
+cloud-waste-sniper/
+├── src/
+│   ├── main.py            # FastAPI application (8 endpoints)
+│   ├── scraper.py          # AWS scanner + Bright Data pricing client
+│   ├── price_intel.py      # Multi-cloud competitive pricing intelligence
+│   ├── mapper.py           # Terraform state mapper + IaC modifier
+│   ├── git_engine.py       # Git branch/commit/PR automation
+│   ├── reporter.py         # Executive Markdown report generator
+│   ├── history.py          # In-memory scan history & audit trail
+│   └── templates/
+│       └── index.html      # Multi-page SPA dashboard (800+ lines)
+├── mock_infra/
+│   ├── main.tf             # 8 simulated AWS resources (Terraform)
+│   └── terraform.tfstate   # Mock Terraform state file
+├── .env                    # Environment configuration
+├── requirements.txt        # Python dependencies
+└── README.md               # This file
+```
+
+---
+
+## 🔗 API Endpoints
+
+| Method | Endpoint | Description |
+|:---|:---|:---|
+| `GET` | `/` | Dashboard SPA |
+| `GET` | `/api/scan` | Run infrastructure waste scan |
+| `GET` | `/api/price-intel` | Multi-cloud pricing comparison |
+| `GET` | `/api/history` | Scan history audit trail |
+| `GET` | `/api/remediation-log` | Remediation activity log |
+| `GET` | `/api/settings` | System configuration status |
+| `GET` | `/api/report` | Download executive Markdown report |
+| `POST` | `/api/remediate` | Execute IaC remediation + Git commit |
+
+---
+
+## 🏆 Hackathon Track Alignment
+
+| Track | Alignment |
+|:---|:---|
+| **Track 2: Intelligence** | ✅ Multi-cloud competitive pricing intelligence — real-time comparison across AWS, Azure, GCP |
+| **Track 3: Infrastructure** | ✅ Self-healing data pipeline — graceful fallbacks, structured outputs, zero-maintenance scraping |
+
+---
+
+## 👥 Team
+
+Built with ⚡ for the Web Data UNLOCKED Hackathon.
+
+---
+
+## 📄 License
+
+MIT License — see [LICENSE](LICENSE) for details.

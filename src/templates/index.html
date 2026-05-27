@@ -216,6 +216,7 @@
 
         /* ─── SIDEBAR ENHANCEMENTS ─── */
         .env-selector {
+            position: relative;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -231,6 +232,32 @@
         .env-selector:hover { background: rgba(255,255,255,0.06); }
         .env-label { color: var(--text-tertiary); margin-right: 4px; }
         .env-value { color: var(--accent-cyan); font-weight: 600; flex: 1; }
+
+        .env-dropdown {
+            display: none;
+            position: absolute;
+            background: #0f1422;
+            border: 1px solid var(--border-main);
+            border-radius: 6px;
+            top: 36px;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .env-option {
+            padding: 8px 12px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: .2s;
+            text-align: left;
+        }
+        .env-option:hover {
+            background: rgba(0,210,255,0.08);
+            color: var(--accent-cyan);
+        }
 
         .sidebar-goal {
             margin: 20px 20px 0;
@@ -1331,7 +1358,7 @@
                 <div><span class="env-label">env:</span><span class="env-value" id="currentEnv">production</span></div>
                 <span class="material-icons-round" style="font-size:14px;color:var(--text-tertiary)">expand_more</span>
                 
-                <div class="env-dropdown" id="envDropdown" style="display:none; position:absolute; background:var(--bg-panel); border:1px solid var(--border-main); border-radius:6px; top:45px; left:20px; width:180px; z-index:100;">
+                <div class="env-dropdown" id="envDropdown" style="display:none;">
                     <div class="env-option" onclick="switchEnv('production')">production</div>
                     <div class="env-option" onclick="switchEnv('staging')">staging</div>
                 </div>

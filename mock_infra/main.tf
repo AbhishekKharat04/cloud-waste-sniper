@@ -2,6 +2,7 @@
 # This file simulates a realistic AWS environment with wasteful resources.
 
 resource "aws_ebs_volume" "unused_data_volume" {
+  count = 0 # Added by Cloud Waste Sniper
   availability_zone = "us-east-1a"
   size              = 100
   type              = "gp3"

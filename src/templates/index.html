@@ -1383,6 +1383,17 @@
         </main>
     </div>
 
+    <!-- RESOURCE DETAIL MODAL -->
+    <div class="modal-overlay" id="resourceDetailModal">
+        <div class="modal" style="max-width:560px;text-align:left;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+                <h2 style="font-size:18px;-webkit-text-fill-color:var(--text-primary);background:none;">Resource Details</h2>
+                <button onclick="closeResourceDetail()" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:20px;">&times;</button>
+            </div>
+            <div id="resourceDetailBody"></div>
+        </div>
+    </div>
+
     <!-- ═══════════════════════════════════════════════
          JAVASCRIPT ENGINE
          ═══════════════════════════════════════════════ -->
@@ -1644,7 +1655,7 @@
                 const target = r.suggested_downsize || 't3.medium';
                 actionBtn = `<button class="btn btn-success btn-sm" onclick="remediate('${r.resource_id}','downsize_instance','${target}')"><span class="material-icons-round">compress</span> Downsize</button>`;
             } else {
-                actionBtn = `<button class="btn btn-secondary btn-sm" disabled><span class="material-icons-round">info</span> Review</button>`;
+                actionBtn = `<button class="btn btn-secondary btn-sm" onclick="showResourceDetail('${r.resource_id}','${r.type}','${r.reason.replace(/'/g, "\\'").replace(/"/g, '&quot;')}',${waste})"><span class="material-icons-round">info</span> Review</button>`;
             }
             
             return `<tr>
@@ -1679,6 +1690,105 @@
             showToast('Error: ' + e.message, 'error');
         }
         setLoading(false);
+    }
+
+    // ───────── RESOURCE DETAIL MODAL ─────────
+    const _resourceRecommendations = {
+        'ebs_snapshot': {
+            icon: 'photo_camera',
+            color: 'var(--accent-yellow)',
+            title: 'Orphaned EBS Snapshot',
+            recommendation: 'This snapshot\'s parent volume has been deleted. The snapshot continues to incur storage charges with no recovery value.',
+            actions: [
+                'Verify no AMIs reference this snapshot',
+                'Check if any restore workflows depend on it',
+                'Delete via AWS Console or CLI: <code style="background:var(--bg-card);padding:2px 6px;border-radius:4px;font-size:11px;">aws ec2 delete-snapshot</code>'
+            ]
+        },
+        'elastic_ip': {
+            icon: 'language',
+            color: 'var(--accent-purple)',
+            title: 'Unassociated Elastic IP',
+            recommendation: 'AWS charges $0.005/hr (~$3.60/mo) for Elastic IPs not associated with a running instance. This IP is idle.',
+            actions: [
+                'Associate with an active EC2 instance',
+                'Release if no longer needed: <code style="background:var(--bg-card);padding:2px 6px;border-radius:4px;font-size:11px;">aws ec2 release-address</code>',
+                'Update DNS records if this IP was referenced externally'
+            ]
+        },
+        'nat_gateway': {
+            icon: 'router',
+            color: 'var(--accent-orange)',
+            title: 'Idle NAT Gateway',
+            recommendation: 'This NAT Gateway has processed zero bytes of traffic. NAT Gateways cost $0.045/hr ($32.40/mo) plus data processing fees.',
+            actions: [
+                'Verify no private subnets depend on this gateway for outbound traffic',
+                'Check route tables for references to this NAT Gateway',
+                'Delete and remove route table entries if unused'
+            ]
+        },
+        'load_balancer': {
+            icon: 'dns',
+            color: 'var(--accent-red)',
+            title: 'Empty Load Balancer',
+            recommendation: 'This Application Load Balancer has no healthy targets registered. It\'s incurring base charges without serving traffic.',
+            actions: [
+                'Register healthy targets to the target group',
+                'Check if the service behind this ALB was decommissioned',
+                'Delete ALB + target group + listener rules if no longer needed'
+            ]
+        }
+    };
+
+    function showResourceDetail(resourceId, type, reason, waste) {
+        const info = _resourceRecommendations[type] || { icon: 'info', color: 'var(--accent-cyan)', title: type, recommendation: reason, actions: ['Review manually'] };
+        const body = document.getElementById('resourceDetailBody');
+        body.innerHTML = `
+            <div style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--bg-surface);border-radius:var(--radius-sm);border:1px solid var(--border-main);margin-bottom:16px;">
+                <div style="width:44px;height:44px;border-radius:10px;background:${info.color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <span class="material-icons-round" style="color:${info.color};font-size:22px;">${info.icon}</span>
+                </div>
+                <div>
+                    <div style="font-weight:700;font-size:15px;color:var(--text-primary);">${info.title}</div>
+                    <div style="font-size:12px;color:var(--text-tertiary);font-family:monospace;margin-top:2px;">${resourceId}</div>
+                </div>
+                <div style="margin-left:auto;text-align:right;">
+                    <div style="font-size:18px;font-weight:800;color:var(--accent-red);">$${waste.toFixed(2)}</div>
+                    <div style="font-size:10px;color:var(--text-tertiary);">per month</div>
+                </div>
+            </div>
+            <div style="margin-bottom:16px;">
+                <div style="font-weight:600;font-size:13px;color:var(--text-secondary);margin-bottom:6px;">FINDING</div>
+                <p style="font-size:13px;color:var(--text-primary);line-height:1.7;margin:0;">${reason}</p>
+            </div>
+            <div style="margin-bottom:16px;">
+                <div style="font-weight:600;font-size:13px;color:var(--text-secondary);margin-bottom:6px;">ANALYSIS</div>
+                <p style="font-size:13px;color:var(--text-primary);line-height:1.7;margin:0;">${info.recommendation}</p>
+            </div>
+            <div style="margin-bottom:20px;">
+                <div style="font-weight:600;font-size:13px;color:var(--text-secondary);margin-bottom:8px;">RECOMMENDED ACTIONS</div>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    ${info.actions.map((a, i) => `
+                        <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:var(--bg-surface);border-radius:var(--radius-sm);border:1px solid var(--border-main);">
+                            <span style="width:22px;height:22px;border-radius:50%;background:${info.color}22;color:${info.color};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;">${i+1}</span>
+                            <span style="font-size:12px;color:var(--text-primary);line-height:1.6;">${a}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="acknowledgeResource('${resourceId}');closeResourceDetail()">
+                <span class="material-icons-round">check_circle</span> Acknowledge & Tag for Cleanup
+            </button>
+        `;
+        document.getElementById('resourceDetailModal').classList.add('show');
+    }
+
+    function closeResourceDetail() {
+        document.getElementById('resourceDetailModal').classList.remove('show');
+    }
+
+    function acknowledgeResource(resourceId) {
+        showToast(resourceId + ' acknowledged — tagged for manual cleanup', 'success');
     }
 
     // ───────── DOWNLOAD REPORT ─────────
@@ -1963,6 +2073,7 @@
         if (e.key === 'Escape') {
             closeCmdPalette();
             closeWelcome();
+            closeResourceDetail();
         }
         // Number keys for nav (only when cmd palette is open)
         if (document.getElementById('cmdPalette').classList.contains('show')) {

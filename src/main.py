@@ -4,10 +4,13 @@ from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Load env variables before importing modules
-load_dotenv()
+# Load env variables — resolve .env from project root (parent of src/)
+_project_root = Path(__file__).resolve().parent.parent
+_env_path = _project_root / ".env"
+load_dotenv(dotenv_path=_env_path, override=True)
 
 from src.scraper import AWSSniper
 from src.mapper import StateMapper, TFModifier

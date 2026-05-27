@@ -805,6 +805,251 @@
         }
         .sdb-brightdata { background: rgba(168,85,247,0.12); color: var(--accent-purple); }
         .sdb-default { background: rgba(251,146,60,0.12); color: var(--accent-orange); }
+
+        /* ═══════════════ WELCOME ONBOARDING MODAL ═══════════════ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(6,8,13,0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-main);
+            border-radius: var(--radius-xl);
+            max-width: 520px;
+            width: 90%;
+            padding: 40px;
+            text-align: center;
+            animation: modalIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .modal-logo {
+            width: 64px; height: 64px;
+            background: var(--gradient-hero);
+            border-radius: var(--radius-md);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 20px;
+            box-shadow: 0 8px 32px rgba(0,210,255,0.3);
+        }
+        .modal h2 {
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            background: var(--gradient-hero);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .modal p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.7;
+            margin-bottom: 24px;
+        }
+        .modal-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            text-align: left;
+            margin-bottom: 28px;
+        }
+        .modal-step {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            background: var(--bg-surface);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-main);
+        }
+        .modal-step-num {
+            width: 28px; height: 28px;
+            background: var(--gradient-hero);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 800; color: #fff;
+            flex-shrink: 0;
+        }
+        .modal-step span {
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+        .modal-step strong { color: var(--accent-cyan); }
+
+        /* ═══════════════ COMMAND PALETTE (Ctrl+K) ═══════════════ */
+        .cmd-palette-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(6,8,13,0.7);
+            backdrop-filter: blur(8px);
+            z-index: 3000;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 18vh;
+        }
+        .cmd-palette-overlay.show { display: flex; }
+        .cmd-palette {
+            background: var(--bg-card);
+            border: 1px solid var(--border-glow-hover);
+            border-radius: var(--radius-lg);
+            width: 500px;
+            max-width: 90%;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.6), var(--glow-cyan);
+            animation: modalIn 0.2s ease;
+            overflow: hidden;
+        }
+        .cmd-input-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-main);
+        }
+        .cmd-input-row .material-icons-round {
+            color: var(--text-tertiary);
+            font-size: 20px;
+        }
+        .cmd-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            color: var(--text-primary);
+        }
+        .cmd-input::placeholder { color: var(--text-tertiary); }
+        .cmd-results {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .cmd-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 13px;
+            transition: all var(--transition-fast);
+        }
+        .cmd-item:hover, .cmd-item.active {
+            background: rgba(0,210,255,0.06);
+            color: var(--text-primary);
+        }
+        .cmd-item .material-icons-round { font-size: 18px; opacity: 0.6; }
+        .cmd-item .cmd-shortcut {
+            margin-left: auto;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            color: var(--text-tertiary);
+            font-family: monospace;
+        }
+
+        /* ═══════════════ KEYBOARD SHORTCUT HINT ═══════════════ */
+        .kbd {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-main);
+            color: var(--text-tertiary);
+            font-family: 'Inter', monospace;
+            font-weight: 600;
+        }
+
+        /* ═══════════════ SKELETON LOADERS ═══════════════ */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: var(--radius-sm);
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* ═══════════════ ANIMATED COUNTER ═══════════════ */
+        .counter-animate {
+            transition: all 0.5s ease;
+        }
+
+        /* ═══════════════ FOOTER BRANDING ═══════════════ */
+        .app-footer {
+            text-align: center;
+            padding: 24px;
+            border-top: 1px solid var(--border-main);
+            margin-top: 48px;
+        }
+        .app-footer p {
+            font-size: 11px;
+            color: var(--text-tertiary);
+            letter-spacing: 0.3px;
+        }
+        .app-footer a {
+            color: var(--accent-cyan);
+            text-decoration: none;
+        }
+        .app-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* ═══════════════ STEP PROGRESS BAR ═══════════════ */
+        .step-progress {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 24px;
+        }
+        .step-dot {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 700;
+            background: var(--bg-card);
+            border: 2px solid var(--border-main);
+            color: var(--text-tertiary);
+            position: relative;
+            z-index: 1;
+            transition: all var(--transition-smooth);
+        }
+        .step-dot.active {
+            background: var(--gradient-hero);
+            border-color: var(--accent-cyan);
+            color: #fff;
+            box-shadow: var(--glow-cyan);
+        }
+        .step-dot.done {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+            color: #000;
+        }
+        .step-line {
+            flex: 1;
+            height: 2px;
+            background: var(--border-main);
+            transition: background var(--transition-smooth);
+        }
+        .step-line.done { background: var(--accent-green); }
     </style>
 </head>
 <body>
@@ -815,6 +1060,76 @@
 
     <!-- TOAST CONTAINER -->
     <div class="toast-container" id="toastContainer"></div>
+
+    <!-- WELCOME ONBOARDING MODAL -->
+    <div class="modal-overlay" id="welcomeModal">
+        <div class="modal">
+            <div class="modal-logo">⚡</div>
+            <h2>Welcome to Cloud Waste Sniper</h2>
+            <p>Your AI-powered FinOps command center. Detect cloud waste, compare multi-cloud pricing in real-time, and auto-remediate with Git-backed Terraform patches.</p>
+            <div class="modal-steps">
+                <div class="modal-step">
+                    <div class="modal-step-num">1</div>
+                    <span>Click <strong>Run AWS Scan</strong> to detect wasteful resources</span>
+                </div>
+                <div class="modal-step">
+                    <div class="modal-step-num">2</div>
+                    <span>Visit <strong>Price Intelligence</strong> for multi-cloud comparisons</span>
+                </div>
+                <div class="modal-step">
+                    <div class="modal-step-num">3</div>
+                    <span>Hit <strong>Remediate</strong> to auto-patch Terraform + Git commit</span>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="closeWelcome()" style="width:100%;justify-content:center;padding:14px;font-size:15px;">
+                <span class="material-icons-round">rocket_launch</span> Get Started
+            </button>
+            <p style="margin-top:12px;margin-bottom:0;font-size:11px;color:var(--text-tertiary)">Press <span class="kbd">Ctrl</span><span class="kbd">K</span> anytime for quick actions</p>
+        </div>
+    </div>
+
+    <!-- COMMAND PALETTE (Ctrl+K) -->
+    <div class="cmd-palette-overlay" id="cmdPalette" onclick="if(event.target===this)closeCmdPalette()">
+        <div class="cmd-palette">
+            <div class="cmd-input-row">
+                <span class="material-icons-round">search</span>
+                <input type="text" class="cmd-input" id="cmdInput" placeholder="Type a command..." oninput="filterCmdItems()">
+                <span class="kbd">ESC</span>
+            </div>
+            <div class="cmd-results" id="cmdResults">
+                <div class="cmd-item" onclick="closeCmdPalette();runScan()">
+                    <span class="material-icons-round">radar</span> Run AWS Scan
+                    <span class="cmd-shortcut">Ctrl+Shift+S</span>
+                </div>
+                <div class="cmd-item" onclick="closeCmdPalette();navigateTo('dashboard')">
+                    <span class="material-icons-round">dashboard</span> Go to Dashboard
+                    <span class="cmd-shortcut">1</span>
+                </div>
+                <div class="cmd-item" onclick="closeCmdPalette();navigateTo('price-intel')">
+                    <span class="material-icons-round">trending_up</span> Price Intelligence
+                    <span class="cmd-shortcut">2</span>
+                </div>
+                <div class="cmd-item" onclick="closeCmdPalette();navigateTo('scan-history')">
+                    <span class="material-icons-round">history</span> Scan History
+                    <span class="cmd-shortcut">3</span>
+                </div>
+                <div class="cmd-item" onclick="closeCmdPalette();navigateTo('remediation-log')">
+                    <span class="material-icons-round">build_circle</span> Remediation Log
+                    <span class="cmd-shortcut">4</span>
+                </div>
+                <div class="cmd-item" onclick="closeCmdPalette();navigateTo('settings')">
+                    <span class="material-icons-round">settings</span> Settings
+                    <span class="cmd-shortcut">5</span>
+                </div>
+                <div class="cmd-item" onclick="closeCmdPalette();downloadReport()">
+                    <span class="material-icons-round">download</span> Download Executive Report
+                </div>
+                <div class="cmd-item" onclick="closeCmdPalette();loadPriceIntel()">
+                    <span class="material-icons-round">refresh</span> Fetch Live Pricing
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- MOBILE TOGGLE -->
     <button class="mobile-toggle" id="mobileToggle" onclick="toggleSidebar()">
@@ -1581,9 +1896,99 @@
         } catch(e) { console.error(e); }
     }
 
+    // ───────── ANIMATED NUMBER COUNTER ─────────
+    function animateCounter(el, target, prefix = '$', suffix = '', duration = 1200) {
+        const start = 0;
+        const startTime = performance.now();
+        function step(now) {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+            const current = start + (target - start) * eased;
+            el.textContent = prefix + current.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + suffix;
+            if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
+    function animateCounterInt(el, target, prefix = '', suffix = '', duration = 800) {
+        const start = 0;
+        const startTime = performance.now();
+        function step(now) {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            el.textContent = prefix + Math.round(start + (target - start) * eased) + suffix;
+            if (progress < 1) requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+    }
+
+    // ───────── WELCOME MODAL ─────────
+    function showWelcome() {
+        if (!localStorage.getItem('cws_welcomed')) {
+            document.getElementById('welcomeModal').classList.add('show');
+        }
+    }
+    function closeWelcome() {
+        document.getElementById('welcomeModal').classList.remove('show');
+        localStorage.setItem('cws_welcomed', 'true');
+    }
+
+    // ───────── COMMAND PALETTE ─────────
+    function openCmdPalette() {
+        document.getElementById('cmdPalette').classList.add('show');
+        setTimeout(() => document.getElementById('cmdInput').focus(), 100);
+    }
+    function closeCmdPalette() {
+        document.getElementById('cmdPalette').classList.remove('show');
+        document.getElementById('cmdInput').value = '';
+        filterCmdItems();
+    }
+    function filterCmdItems() {
+        const query = document.getElementById('cmdInput').value.toLowerCase();
+        document.querySelectorAll('.cmd-item').forEach(item => {
+            item.style.display = item.textContent.toLowerCase().includes(query) ? 'flex' : 'none';
+        });
+    }
+
+    // ───────── KEYBOARD SHORTCUTS ─────────
+    document.addEventListener('keydown', (e) => {
+        // Ctrl+K → command palette
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+            e.preventDefault();
+            openCmdPalette();
+        }
+        // ESC → close modals
+        if (e.key === 'Escape') {
+            closeCmdPalette();
+            closeWelcome();
+        }
+        // Number keys for nav (only when cmd palette is open)
+        if (document.getElementById('cmdPalette').classList.contains('show')) {
+            if (e.key === '1') { closeCmdPalette(); navigateTo('dashboard'); }
+            if (e.key === '2') { closeCmdPalette(); navigateTo('price-intel'); }
+            if (e.key === '3') { closeCmdPalette(); navigateTo('scan-history'); }
+            if (e.key === '4') { closeCmdPalette(); navigateTo('remediation-log'); }
+            if (e.key === '5') { closeCmdPalette(); navigateTo('settings'); }
+        }
+    });
+
+    // ───────── ENHANCED RENDER WITH COUNTERS ─────────
+    const _originalRenderDashboard = renderDashboard;
+    renderDashboard = function() {
+        _originalRenderDashboard();
+        // Animate the metric counters
+        const totalWaste = scanData.reduce((s, r) => s + (r.estimated_monthly_waste || r.estimated_monthly_savings || 0), 0);
+        animateCounter(document.getElementById('mTotalWaste'), totalWaste);
+        animateCounter(document.getElementById('mAnnualSavings'), totalWaste * 12);
+        animateCounterInt(document.getElementById('mResourceCount'), scanData.length);
+    };
+
     // ───────── INIT ─────────
     document.addEventListener('DOMContentLoaded', () => {
         loadSettings();
+        showWelcome();
     });
     </script>
 </body>

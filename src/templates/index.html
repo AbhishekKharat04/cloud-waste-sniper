@@ -1865,8 +1865,7 @@
     // ───────── STATE ─────────
     let scanData = [];
     let scanHistory = [];
-    let windowEnv = 'production';
-    window.currentEnv = windowEnv;
+    window.currentEnv = 'production';
     let pricingEngine = '';
     let chartPie = null, chartBar = null, chartHBar = null, chartPriceCompare = null;
 
@@ -2349,7 +2348,7 @@
     function toggleCopilot() {
         const drawer = document.getElementById('copilotDrawer');
         drawer.classList.toggle('show');
-        document.getElementById('copilotEnvBadge').textContent = `Active context: ${windowEnv}`;
+        document.getElementById('copilotEnvBadge').textContent = `Active context: ${window.currentEnv}`;
     }
 
     function quickChat(text) {
@@ -2383,7 +2382,7 @@
             const resp = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: text, env: windowEnv })
+                body: JSON.stringify({ message: text, env: window.currentEnv })
             });
             const data = await resp.json();
             document.getElementById(loadingId).remove();
@@ -2422,7 +2421,7 @@
             const resp = await fetch('/api/simulate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ resource_id: resourceId, resource_type: resourceType, env: windowEnv })
+                body: JSON.stringify({ resource_id: resourceId, resource_type: resourceType, env: window.currentEnv })
             });
             const data = await resp.json();
             const sim = data.simulation;

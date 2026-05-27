@@ -23,6 +23,11 @@ _FALLBACK_PRICING = {
         "aws": {"type": "gp3 SSD", "price_per_gb": 0.08, "currency": "USD"},
         "azure": {"type": "Premium SSD v2", "price_per_gb": 0.095, "currency": "USD"},
         "gcp": {"type": "pd-ssd", "price_per_gb": 0.085, "currency": "USD"}
+    },
+    "database": {
+        "aws": {"type": "RDS PostgreSQL (db.m5.large)", "hourly": 0.276, "monthly": 198.72, "currency": "USD"},
+        "azure": {"type": "Azure DB for PostgreSQL (2 vCore)", "hourly": 0.258, "monthly": 185.76, "currency": "USD"},
+        "gcp": {"type": "Cloud SQL PostgreSQL (db-custom-2-8192)", "hourly": 0.228, "monthly": 164.16, "currency": "USD"}
     }
 }
 
@@ -73,6 +78,7 @@ class CloudPricingIntelligence:
         data = {
             "compute": dict(_FALLBACK_PRICING["compute"]),
             "storage": dict(_FALLBACK_PRICING["storage"]),
+            "database": dict(_FALLBACK_PRICING["database"]),
         }
         
         if self.use_live and self.api_key:
@@ -108,6 +114,28 @@ class CloudPricingIntelligence:
                 data["storage"]["aws"]["price_per_gb"] = price
                 source = "brightdata"
             
+            # Try database prices
+            aws_db = self._serp_query("AWS RDS PostgreSQL db.m5.large on-demand price per hour us-east-1")
+            price = self._extract_price_from_serp(aws_db, 0.05, 3.00)
+            if price:
+                data["database"]["aws"]["hourly"] = price
+                data["database"]["aws"]["monthly"] = round(price * 24 * 30, 2)
+                source = "brightdata"
+
+            azure_db = self._serp_query("Azure Database for PostgreSQL Flexible Server 2 vCore price per hour")
+            price = self._extract_price_from_serp(azure_db, 0.05, 3.00)
+            if price:
+                data["database"]["azure"]["hourly"] = price
+                data["database"]["azure"]["monthly"] = round(price * 24 * 30, 2)
+                source = "brightdata"
+
+            gcp_db = self._serp_query("GCP Cloud SQL PostgreSQL 2 vCPU 8GB RAM price per hour")
+            price = self._extract_price_from_serp(gcp_db, 0.05, 3.00)
+            if price:
+                data["database"]["gcp"]["hourly"] = price
+                data["database"]["gcp"]["monthly"] = round(price * 24 * 30, 2)
+                source = "brightdata"
+            
             if source == "fallback":
                 logger.warning("[PriceIntel] All live queries failed. Using fallback data.")
         
@@ -116,6 +144,8 @@ class CloudPricingIntelligence:
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "compute": data["compute"],
             "storage": data["storage"],
+            "database": data["database"],
             "cheapest_compute": min(data["compute"].items(), key=lambda x: x[1]["monthly"])[0],
             "cheapest_storage": min(data["storage"].items(), key=lambda x: x[1]["price_per_gb"])[0],
+            "cheapest_database": min(data["database"].items(), key=lambda x: x[1]["monthly"])[0],
         }

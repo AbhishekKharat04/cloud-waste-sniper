@@ -9,8 +9,12 @@ class GitPRCreator:
     def __init__(self):
         self.github_token = os.getenv("GITHUB_TOKEN", "").strip()
         self.repo_path = os.getenv("REPO_PATH", ".")
-        self.repo_name = os.getenv("REPO_NAME", "")
-        self.use_pygithub = bool(self.github_token and self.repo_name)
+        self.repo_name = os.getenv("REPO_NAME", "").split("#")[0].strip()  # strip inline comments
+        # Only use PyGithub if token exists AND repo_name is not a placeholder
+        self.use_pygithub = bool(
+            self.github_token and self.repo_name 
+            and "yourusername" not in self.repo_name
+        )
 
     def _run_cmd(self, cmd: list) -> bool:
         """Helper to run a shell command in the target repo directory."""

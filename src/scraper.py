@@ -115,9 +115,39 @@ class BrightDataPricingClient:
         logger.warning("[BrightData SERP] Could not extract valid t3.2xlarge price from search snippets.")
         return None
 
+    def fetch_azure_vm_price(self) -> Optional[float]:
+        """Queries Google via SERP for Azure D2s v3 hourly price."""
+        query = "Azure D2s v3 virtual machine price per hour site:azure.microsoft.com"
+        serp_data = self._serp_query(query)
+        if not serp_data:
+            return None
+        organic_results = serp_data.get("organic", [])
+        for result in organic_results:
+            snippet = result.get("snippet", "") + " " + result.get("description", "")
+            price = self._extract_price(snippet)
+            if price is not None and 0.05 <= price <= 1.00:
+                logger.info(f"[BrightData SERP] Extracted Azure D2s v3 price: ${price}/hr")
+                return price
+        return None
 
-class AWSSniper:
-    def __init__(self):
+    def fetch_gcp_vm_price(self) -> Optional[float]:
+        """Queries Google via SERP for GCP e2-standard-2 hourly price."""
+        query = "Google Cloud e2-standard-2 compute engine price per hour site:cloud.google.com"
+        serp_data = self._serp_query(query)
+        if not serp_data:
+            return None
+        organic_results = serp_data.get("organic", [])
+        for result in organic_results:
+            snippet = result.get("snippet", "") + " " + result.get("description", "")
+            price = self._extract_price(snippet)
+            if price is not None and 0.02 <= price <= 1.00:
+                logger.info(f"[BrightData SERP] Extracted GCP e2-standard-2 price: ${price}/hr")
+                return price
+        return None
+
+class CloudWasteSniper:
+    def __init__(self, env: str = "production"):
+        self.env = env
         self.mock_mode = os.getenv("MOCK_AWS", "false").lower() == "true"
         self.use_real_pricing = os.getenv("USE_REAL_PRICING", "false").lower() == "true"
         self.brightdata_api_key = os.getenv("BRIGHTDATA_API_KEY", "").strip()
@@ -126,9 +156,9 @@ class AWSSniper:
         if not self.mock_mode:
             self.ec2_client = boto3.client('ec2', region_name=os.getenv("AWS_REGION", "us-east-1"))
             self.cloudwatch_client = boto3.client('cloudwatch', region_name=os.getenv("AWS_REGION", "us-east-1"))
-            logger.info("AWSSniper initialized in LIVE mode (read-only).")
+            logger.info("CloudWasteSniper initialized in LIVE mode (read-only).")
         else:
-            logger.info("AWSSniper initialized in MOCK mode.")
+            logger.info(f"CloudWasteSniper initialized in MOCK mode for env: {self.env}.")
 
         # Pricing Client Initialization
         self.pricing_client = None
@@ -158,26 +188,47 @@ class AWSSniper:
         # 2. Get unattached volumes
         unattached_volumes = []
         if self.mock_mode:
-            # Simulated unattached gp3 volume #1 (100 GB)
-            unattached_volumes.append({
-                "resource_id": "vol-0123456789abcdef0",
-                "type": "ebs_volume",
-                "reason": "Unattached for 30+ days (State=available)",
-                "size_gb": 100,
-                "unit_price": unit_price,
-                "estimated_monthly_waste": round(100 * unit_price, 2),
-                "pricing_source": pricing_source
-            })
-            # Simulated unattached gp3 volume #2 (200 GB)
-            unattached_volumes.append({
-                "resource_id": "vol-0a1b2c3d4e5f67890",
-                "type": "ebs_volume",
-                "reason": "Unattached, snapshot backup exists",
-                "size_gb": 200,
-                "unit_price": unit_price,
-                "estimated_monthly_waste": round(200 * unit_price, 2),
-                "pricing_source": pricing_source
-            })
+            # Check mock_infra/main.tf to see if resources are disabled
+            disabled_unused = False
+            disabled_legacy = False
+            try:
+                tf_path = os.path.join(os.getenv("REPO_PATH", "."), "mock_infra", self.env, "main.tf")
+                if os.path.exists(tf_path):
+                    with open(tf_path, 'r') as f:
+                        tf_content = f.read()
+                    
+                    unused_match = re.search(r'resource\s+"aws_ebs_volume"\s+"unused_data_volume"\s*\{(.*?)\}', tf_content, re.DOTALL)
+                    if unused_match and 'count=0' in re.sub(r'\s+', '', unused_match.group(1)):
+                        disabled_unused = True
+                        
+                    legacy_match = re.search(r'resource\s+"aws_ebs_volume"\s+"legacy_backup_volume"\s*\{(.*?)\}', tf_content, re.DOTALL)
+                    if legacy_match and 'count=0' in re.sub(r'\s+', '', legacy_match.group(1)):
+                        disabled_legacy = True
+            except Exception as e:
+                logger.warning(f"Error parsing main.tf in mock scan: {e}")
+
+            if not disabled_unused:
+                # Simulated unattached gp3 volume #1 (100 GB)
+                unattached_volumes.append({
+                    "resource_id": "vol-0123456789abcdef0",
+                    "type": "ebs_volume",
+                    "reason": "Unattached for 30+ days (State=available)",
+                    "size_gb": 100,
+                    "unit_price": unit_price,
+                    "estimated_monthly_waste": round(100 * unit_price, 2),
+                    "pricing_source": pricing_source
+                })
+            if not disabled_legacy:
+                # Simulated unattached gp3 volume #2 (200 GB)
+                unattached_volumes.append({
+                    "resource_id": "vol-0a1b2c3d4e5f67890",
+                    "type": "ebs_volume",
+                    "reason": "Unattached, snapshot backup exists",
+                    "size_gb": 200,
+                    "unit_price": unit_price,
+                    "estimated_monthly_waste": round(200 * unit_price, 2),
+                    "pricing_source": pricing_source
+                })
         else:
             try:
                 paginator = self.ec2_client.get_paginator('describe_volumes')
@@ -185,7 +236,6 @@ class AWSSniper:
                     for volume in page['Volumes']:
                         size_gb = volume['Size']
                         vol_type = volume.get('VolumeType', 'gp3')
-                        # If different than gp3, we still estimate with gp3 rate for MVP simplicity
                         unattached_volumes.append({
                             "resource_id": volume['VolumeId'],
                             "type": "ebs_volume",
@@ -216,7 +266,6 @@ class AWSSniper:
 
         # Downsize to t3.medium savings calculation
         t3_md_price = _DEFAULT_T3_MD_PRICE_HR
-        # If live pricing scaled, scale the downsized instance rate proportionally
         if pricing_source == "brightdata":
             scale_ratio = t3_2xl_price / _DEFAULT_T3_2XL_PRICE_HR
             t3_md_price = _DEFAULT_T3_MD_PRICE_HR * scale_ratio
@@ -228,30 +277,49 @@ class AWSSniper:
         # 2. Get idle instances
         idle_compute = []
         if self.mock_mode:
-            idle_compute.append({
-                "resource_id": "i-0abc12345def67890",
-                "type": "ec2_instance",
-                "reason": "Max CPU < 3% over 7 days",
-                "suggested_downsize": "t3.medium",
-                "unit_price": t3_2xl_price,
-                "estimated_monthly_savings": round(estimated_savings, 2),
-                "pricing_source": pricing_source
-            })
-            # Zombie instance — near-zero utilization over 14 days
-            t3_sm_price = _DEFAULT_T3_MD_PRICE_HR * 0.5  # t3.small is ~half of t3.medium
-            if pricing_source == "brightdata":
-                scale_ratio = t3_2xl_price / _DEFAULT_T3_2XL_PRICE_HR
-                t3_sm_price = t3_sm_price * scale_ratio
-            zombie_savings = (t3_2xl_price - t3_sm_price) * 24 * 30
-            idle_compute.append({
-                "resource_id": "i-0fed98765cba43210",
-                "type": "ec2_instance",
-                "reason": "Max CPU < 1% over 14 days (zombie)",
-                "suggested_downsize": "t3.small",
-                "unit_price": t3_2xl_price,
-                "estimated_monthly_savings": round(zombie_savings, 2),
-                "pricing_source": pricing_source
-            })
+            downsized_api = False
+            downsized_worker = False
+            try:
+                tf_path = os.path.join(os.getenv("REPO_PATH", "."), "mock_infra", self.env, "main.tf")
+                if os.path.exists(tf_path):
+                    with open(tf_path, 'r') as f:
+                        tf_content = f.read()
+                    
+                    api_match = re.search(r'resource\s+"aws_instance"\s+"overprovisioned_api"\s*\{(.*?)\}', tf_content, re.DOTALL)
+                    if api_match and 'instance_type="t3.medium"' in re.sub(r'\s+', '', api_match.group(1)):
+                        downsized_api = True
+                        
+                    worker_match = re.search(r'resource\s+"aws_instance"\s+"zombie_worker"\s*\{(.*?)\}', tf_content, re.DOTALL)
+                    if worker_match and 'instance_type="t3.small"' in re.sub(r'\s+', '', worker_match.group(1)):
+                        downsized_worker = True
+            except Exception as e:
+                logger.warning(f"Error parsing main.tf in mock scan: {e}")
+
+            if not downsized_api:
+                idle_compute.append({
+                    "resource_id": "i-0abc12345def67890",
+                    "type": "ec2_instance",
+                    "reason": "Max CPU < 3% over 7 days",
+                    "suggested_downsize": "t3.medium",
+                    "unit_price": t3_2xl_price,
+                    "estimated_monthly_savings": round(estimated_savings, 2),
+                    "pricing_source": pricing_source
+                })
+            if not downsized_worker:
+                t3_sm_price = _DEFAULT_T3_MD_PRICE_HR * 0.5
+                if pricing_source == "brightdata":
+                    scale_ratio = t3_2xl_price / _DEFAULT_T3_2XL_PRICE_HR
+                    t3_sm_price = t3_sm_price * scale_ratio
+                zombie_savings = (t3_2xl_price - t3_sm_price) * 24 * 30
+                idle_compute.append({
+                    "resource_id": "i-0fed98765cba43210",
+                    "type": "ec2_instance",
+                    "reason": "Max CPU < 1% over 14 days (zombie)",
+                    "suggested_downsize": "t3.small",
+                    "unit_price": t3_2xl_price,
+                    "estimated_monthly_savings": round(zombie_savings, 2),
+                    "pricing_source": pricing_source
+                })
         else:
             # Pseudo-code / MVP framework for CloudWatch idle computer scanning
             try:
@@ -330,11 +398,119 @@ class AWSSniper:
 
         return orphaned
 
+    def scan_security_waste(self) -> List[Dict]:
+        """Scans for unused or over-permissive IAM roles."""
+        waste = []
+        if self.mock_mode:
+            disabled_admin = False
+            try:
+                tf_path = os.path.join(os.getenv("REPO_PATH", "."), "mock_infra", self.env, "main.tf")
+                if os.path.exists(tf_path):
+                    with open(tf_path, 'r') as f:
+                        tf_content = f.read()
+                    
+                    admin_match = re.search(r'resource\s+"aws_iam_role"\s+"unused_admin_role"\s*\{(.*?)\}', tf_content, re.DOTALL)
+                    if admin_match and 'count=0' in re.sub(r'\s+', '', admin_match.group(1)):
+                        disabled_admin = True
+            except Exception as e:
+                logger.warning(f"Error parsing main.tf for IAM role: {e}")
+
+            if not disabled_admin:
+                waste.append({
+                    "resource_id": "Legacy-Admin-Role",
+                    "type": "iam_role",
+                    "reason": "Security Waste: Unused Admin Role (0 activity in 90 days)",
+                    "estimated_monthly_waste": 0.00,
+                    "pricing_source": "default"
+                })
+        return waste
+
+    def scan_azure_waste(self) -> List[Dict]:
+        waste = []
+        if self.mock_mode:
+            try:
+                tf_path = os.path.join(os.getenv("REPO_PATH", "."), "mock_infra", self.env, "main.tf")
+                if os.path.exists(tf_path):
+                    with open(tf_path, 'r') as f:
+                        tf_content = f.read()
+                    
+                    azure_match = re.search(r'resource\s+"azurerm_virtual_machine"\s+"idle_vm"\s*\{(.*?)\}', tf_content, re.DOTALL)
+                    if azure_match and 'count=0' not in re.sub(r'\s+', '', azure_match.group(1)):
+                        unit_price = 0.096 # default D2s v3
+                        pricing_source = "default"
+                        if self.live_pricing and self.pricing_client:
+                            fetched_price = self.pricing_client.fetch_azure_vm_price()
+                            if fetched_price is not None:
+                                unit_price = fetched_price
+                                pricing_source = "brightdata"
+                        
+                        waste.append({
+                            "resource_id": "azure-vm-idle",
+                            "type": "azure_vm",
+                            "reason": "Idle Azure Virtual Machine (CPU < 5%)",
+                            "estimated_monthly_waste": round(unit_price * 24 * 30, 2),
+                            "pricing_source": pricing_source
+                        })
+            except Exception as e:
+                logger.warning(f"Error parsing main.tf for Azure VM: {e}")
+        return waste
+
+    def scan_gcp_waste(self) -> List[Dict]:
+        waste = []
+        if self.mock_mode:
+            try:
+                tf_path = os.path.join(os.getenv("REPO_PATH", "."), "mock_infra", self.env, "main.tf")
+                if os.path.exists(tf_path):
+                    with open(tf_path, 'r') as f:
+                        tf_content = f.read()
+                    
+                    gcp_match = re.search(r'resource\s+"google_compute_instance"\s+"orphaned_instance"\s*\{(.*?)\}', tf_content, re.DOTALL)
+                    if gcp_match and 'count=0' not in re.sub(r'\s+', '', gcp_match.group(1)):
+                        unit_price = 0.067 # default e2-standard-2
+                        pricing_source = "default"
+                        if self.live_pricing and self.pricing_client:
+                            fetched_price = self.pricing_client.fetch_gcp_vm_price()
+                            if fetched_price is not None:
+                                unit_price = fetched_price
+                                pricing_source = "brightdata"
+                        
+                        waste.append({
+                            "resource_id": "gcp-instance-orphaned",
+                            "type": "gcp_instance",
+                            "reason": "Unused GCP Compute Instance",
+                            "estimated_monthly_waste": round(unit_price * 24 * 30, 2),
+                            "pricing_source": pricing_source
+                        })
+            except Exception as e:
+                logger.warning(f"Error parsing main.tf for GCP Instance: {e}")
+        return waste
+
     def scan_all(self) -> List[Dict]:
-        """Runs all waste scans."""
+        """Runs all waste scans and applies GreenOps CO2 metrics."""
         waste = []
         waste.extend(self.scan_unattached_volumes())
         waste.extend(self.scan_idle_compute())
         waste.extend(self.scan_orphaned_resources())
+        waste.extend(self.scan_security_waste())
+        waste.extend(self.scan_azure_waste())
+        waste.extend(self.scan_gcp_waste())
+        
+        # Calculate GreenOps CO2 footprint
+        # Rough heuristic: 1 dollar of cloud compute waste ~ 0.5 kg CO2e
+        # 1 dollar of storage waste ~ 0.2 kg CO2e
+        for item in waste:
+            cost = item.get("estimated_monthly_waste", 0.0)
+            if "estimated_monthly_savings" in item:
+                cost = item["estimated_monthly_savings"]
+            
+            rtype = item.get("type", "")
+            
+            if "ec2" in rtype:
+                item["estimated_co2e_kg"] = round(cost * 0.5, 2)
+            elif rtype == "iam_role":
+                item["estimated_co2e_kg"] = 0.0
+            else:
+                item["estimated_co2e_kg"] = round(cost * 0.2, 2)
+                
         return waste
 

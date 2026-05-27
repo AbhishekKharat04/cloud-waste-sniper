@@ -214,6 +214,102 @@
             50% { opacity: 0.4; }
         }
 
+        /* ─── SIDEBAR ENHANCEMENTS ─── */
+        .env-selector {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin: 16px 20px 0;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .env-selector:hover { background: rgba(255,255,255,0.06); }
+        .env-label { color: var(--text-tertiary); margin-right: 4px; }
+        .env-value { color: var(--accent-cyan); font-weight: 600; flex: 1; }
+
+        .sidebar-goal {
+            margin: 20px 20px 0;
+            padding: 14px 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .sg-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .sg-track {
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .sg-fill {
+            height: 100%;
+            background: var(--gradient-green);
+            transition: width 1s ease-out;
+            box-shadow: 0 0 8px rgba(0,230,118,0.4);
+        }
+
+        .managed-clouds {
+            display: flex;
+            gap: 16px;
+            padding: 0 14px 12px;
+        }
+        .cloud-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10.5px;
+            color: var(--text-tertiary);
+            font-weight: 600;
+        }
+        .cloud-dot-sm {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+        }
+        .cloud-dot-sm.active { background: var(--accent-green); box-shadow: 0 0 4px var(--accent-green); }
+
+        .up-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            background: rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: background 0.2s;
+            border-top: 1px solid var(--border-main);
+        }
+        .up-card:hover { background: rgba(255,255,255,0.03); }
+        .up-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--bg-surface);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--accent-cyan);
+            font-weight: bold;
+            font-size: 14px;
+            border: 1px solid rgba(0, 210, 255, 0.3);
+            overflow: hidden;
+        }
+        .up-info { flex: 1; display: flex; flex-direction: column; }
+        .up-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .up-title { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+        .up-settings { color: var(--text-tertiary); font-size: 18px; }
+        .up-card:hover .up-settings { color: var(--text-primary); }
+
         /* ─── MAIN CONTENT ─── */
         .main-content {
             margin-left: var(--sidebar-width);
@@ -1147,7 +1243,27 @@
                 </div>
             </div>
             
-            <nav class="sidebar-nav">
+            <div class="env-selector" onclick="toggleEnvDropdown(event)">
+                <div><span class="env-label">env:</span><span class="env-value" id="currentEnv">production</span></div>
+                <span class="material-icons-round" style="font-size:14px;color:var(--text-tertiary)">expand_more</span>
+                
+                <div class="env-dropdown" id="envDropdown" style="display:none; position:absolute; background:var(--bg-panel); border:1px solid var(--border-main); border-radius:6px; top:45px; left:20px; width:180px; z-index:100;">
+                    <div class="env-option" onclick="switchEnv('production')">production</div>
+                    <div class="env-option" onclick="switchEnv('staging')">staging</div>
+                </div>
+            </div>
+
+            <div class="sidebar-goal">
+                <div class="sg-header">
+                    <span>Savings Goal</span>
+                    <span id="sgAmount">$0 / $1k</span>
+                </div>
+                <div class="sg-track">
+                    <div class="sg-fill" id="sgFill" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav" style="display: flex; flex-direction: column; flex: 1;">
                 <div class="nav-section-label">Analyze</div>
                 <div class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
                     <span class="material-icons-round">dashboard</span>
@@ -1173,13 +1289,23 @@
                     <span class="material-icons-round">settings</span>
                     Settings
                 </div>
+                
+                <div style="margin-top:auto"></div>
+                <div class="nav-section-label" style="margin-top:24px;">MANAGED ENVIRONMENTS</div>
+                <div class="managed-clouds">
+                    <div class="cloud-badge"><div class="cloud-dot-sm" id="badge-aws"></div> AWS</div>
+                    <div class="cloud-badge"><div class="cloud-dot-sm" id="badge-azure"></div> Azure</div>
+                    <div class="cloud-badge"><div class="cloud-dot-sm" id="badge-gcp"></div> GCP</div>
+                </div>
             </nav>
 
-            <div class="sidebar-footer">
-                <div class="status-row">
-                    <div class="status-dot" id="systemStatusDot"></div>
-                    <span id="systemStatusText">System Online</span>
+            <div class="sidebar-footer up-card" style="padding:16px 20px; border-top: 1px solid var(--border-main);">
+                <div class="up-avatar" id="userInitials">FA</div>
+                <div class="up-info">
+                    <span class="up-name" id="userName">FinOps Admin</span>
+                    <span class="up-title" id="userRole">System Online</span>
                 </div>
+                <span class="material-icons-round up-settings">more_vert</span>
             </div>
         </aside>
 
@@ -1192,11 +1318,11 @@
                     <span class="topbar-badge badge-mock" id="modeBadge">MOCK MODE</span>
                 </div>
                 <div class="topbar-right">
-                    <button class="btn btn-secondary btn-sm" id="btnDownloadReport" onclick="downloadReport()">
+                    <button class="btn btn-secondary btn-sm" id="btnDownloadReport" onclick="window.location.href='/api/report?env=' + window.currentEnv">
                         <span class="material-icons-round">download</span> Report
                     </button>
                     <button class="btn btn-primary" id="btnRunScan" onclick="runScan()">
-                        <span class="material-icons-round">radar</span> Run AWS Scan
+                        <span class="material-icons-round">bolt</span> Run FinOps Scan
                     </button>
                 </div>
             </div>
@@ -1222,6 +1348,11 @@
                             <div class="metric-label">Wasteful Resources</div>
                             <div class="metric-value" id="mResourceCount">—</div>
                             <div class="metric-sub">need immediate attention</div>
+                        </div>
+                        <div class="metric-card mc-greenops">
+                            <div class="metric-label">GreenOps CO₂e Reduced</div>
+                            <div class="metric-value" id="mGreenOps">—</div>
+                            <div class="metric-sub">estimated monthly savings</div>
                         </div>
                         <div class="metric-card mc-engine">
                             <div class="metric-label">Pricing Engine</div>
@@ -1305,6 +1436,16 @@
                         <span class="material-icons-round" style="font-size:16px;vertical-align:middle;">storage</span> Block Storage — SSD Per-GB Pricing
                     </h4>
                     <div class="comparison-grid" id="storageComparison">
+                        <div class="provider-card"><div class="empty-state" style="padding:40px"><p>Click "Fetch Prices" to load data</p></div></div>
+                        <div class="provider-card"><div class="empty-state" style="padding:40px"><p></p></div></div>
+                        <div class="provider-card"><div class="empty-state" style="padding:40px"><p></p></div></div>
+                    </div>
+
+                    <!-- Database Comparison -->
+                    <h4 style="font-size:14px;color:var(--text-secondary);margin-bottom:12px;margin-top:8px;font-weight:600;">
+                        <span class="material-icons-round" style="font-size:16px;vertical-align:middle;">dns</span> Managed PostgreSQL — 2 vCPU, 8GB RAM
+                    </h4>
+                    <div class="comparison-grid" id="databaseComparison">
                         <div class="provider-card"><div class="empty-state" style="padding:40px"><p>Click "Fetch Prices" to load data</p></div></div>
                         <div class="provider-card"><div class="empty-state" style="padding:40px"><p></p></div></div>
                         <div class="provider-card"><div class="empty-state" style="padding:40px"><p></p></div></div>
@@ -1400,6 +1541,9 @@
     <script>
     // ───────── STATE ─────────
     let scanData = [];
+    let scanHistory = [];
+    let windowEnv = 'production';
+    window.currentEnv = windowEnv;
     let pricingEngine = '';
     let chartPie = null, chartBar = null, chartHBar = null, chartPriceCompare = null;
 
@@ -1466,6 +1610,9 @@
             'elastic_ip': ['Elastic IP', 'type-eip'],
             'nat_gateway': ['NAT Gateway', 'type-nat'],
             'load_balancer': ['Load Balancer', 'type-lb'],
+            'iam_role': ['IAM Role', 'type-iam'],
+            'azure_vm': ['Azure VM', 'type-azure'],
+            'gcp_instance': ['GCP Compute', 'type-gcp'],
         };
         const [label, cls] = map[type] || [type, 'type-ec2'];
         return `<span class="type-badge ${cls}">${label}</span>`;
@@ -1475,7 +1622,7 @@
     async function runScan() {
         setLoading(true);
         try {
-            const resp = await fetch('/api/scan');
+            const resp = await fetch(`/api/scan?env=${window.currentEnv}`);
             const json = await resp.json();
             if (json.status === 'success') {
                 scanData = json.data;
@@ -1491,14 +1638,40 @@
         setLoading(false);
     }
 
+    // ───────── ACTIVE DATA FILTERING ─────────
+    function getActiveScanData() {
+        const ackList = JSON.parse(localStorage.getItem('acknowledged_resources') || '[]');
+        return scanData.filter(r => !ackList.includes(r.resource_id));
+    }
+
     // ───────── RENDER DASHBOARD ─────────
     function renderDashboard() {
-        const totalWaste = scanData.reduce((s, r) => s + (r.estimated_monthly_waste || r.estimated_monthly_savings || 0), 0);
+        const activeData = getActiveScanData();
+            
+        // Render Cloud Badges dynamically
+        const types = activeData.map(r => r.type);
+        const hasAws = types.some(t => t.includes('ec2') || t.includes('ebs') || t.includes('iam') || t.includes('nat') || t.includes('load_balancer') || t.includes('elastic'));
+        const hasAzure = types.some(t => t.includes('azure'));
+        const hasGcp = types.some(t => t.includes('gcp'));
+        
+        document.getElementById('badge-aws').className = 'cloud-dot-sm' + (hasAws ? ' active' : '');
+        document.getElementById('badge-azure').className = 'cloud-dot-sm' + (hasAzure ? ' active' : '');
+        document.getElementById('badge-gcp').className = 'cloud-dot-sm' + (hasGcp ? ' active' : '');
+
+        const totalWaste = activeData.reduce((s, r) => s + (r.estimated_monthly_waste || r.estimated_monthly_savings || 0), 0);
+        
+        // Update Goal
+        const goal = 1000;
+        const progressPct = Math.min((totalWaste / goal) * 100, 100);
+        document.getElementById('sgAmount').textContent = `$${Math.round(totalWaste)} / $1k`;
+        document.getElementById('sgFill').style.width = `${progressPct}%`;
         
         // Metrics
+        const totalCo2 = activeData.reduce((s, r) => s + (r.estimated_co2e_kg || 0), 0);
         document.getElementById('mTotalWaste').textContent = fmt(totalWaste);
         document.getElementById('mAnnualSavings').textContent = fmt(totalWaste * 12);
-        document.getElementById('mResourceCount').textContent = scanData.length;
+        document.getElementById('mResourceCount').textContent = activeData.length;
+        document.getElementById('mGreenOps').textContent = totalCo2.toFixed(1) + ' kg';
         document.getElementById('mPricingEngine').textContent = pricingEngine;
         document.getElementById('mPricingDetail').textContent = pricingEngine.includes('Bright') ? 'via Bright Data SERP API' : 'using curated estimates';
 
@@ -1527,13 +1700,17 @@
         elastic_ip: '#facc15',
         nat_gateway: '#3b82f6',
         load_balancer: '#00e676',
+        iam_role: '#facc15',
+        azure_vm: '#0078D4',
+        gcp_instance: '#DB4437',
     };
-    const chartColorsList = ['#a855f7','#00d2ff','#fb923c','#facc15','#3b82f6','#00e676'];
+    const chartColorsList = ['#a855f7','#00d2ff','#fb923c','#facc15','#3b82f6','#00e676', '#facc15', '#0078D4', '#DB4437'];
 
     function renderPieChart() {
+        const activeData = getActiveScanData();
         // Group by type
         const grouped = {};
-        scanData.forEach(r => {
+        activeData.forEach(r => {
             const t = r.type;
             const v = r.estimated_monthly_waste || r.estimated_monthly_savings || 0;
             grouped[t] = (grouped[t] || 0) + v;
@@ -1565,8 +1742,9 @@
     }
 
     function renderHBarChart() {
+        const activeData = getActiveScanData();
         const grouped = {};
-        scanData.forEach(r => {
+        activeData.forEach(r => {
             const t = r.type;
             const v = r.estimated_monthly_waste || r.estimated_monthly_savings || 0;
             grouped[t] = (grouped[t] || 0) + v;
@@ -1639,12 +1817,13 @@
     // ───────── FINDINGS TABLE ─────────
     function renderTable() {
         const body = document.getElementById('findingsBody');
-        if (!scanData.length) {
+        const activeData = getActiveScanData();
+        if (!activeData.length) {
             body.innerHTML = '<tr><td colspan="6"><div class="empty-state"><span class="material-icons-round">search</span><h3>No data</h3></div></td></tr>';
             return;
         }
-        document.getElementById('tableCount').textContent = `${scanData.length} resources`;
-        body.innerHTML = scanData.map(r => {
+        document.getElementById('tableCount').textContent = `${activeData.length} resources`;
+        body.innerHTML = activeData.map(r => {
             const waste = r.estimated_monthly_waste || r.estimated_monthly_savings || 0;
             const source = r.pricing_source === 'brightdata' ? '<span class="scan-detail-badge sdb-brightdata">Bright Data</span>' : '<span class="scan-detail-badge sdb-default">Default</span>';
             
@@ -1655,7 +1834,7 @@
                 const target = r.suggested_downsize || 't3.medium';
                 actionBtn = `<button class="btn btn-success btn-sm" onclick="remediate('${r.resource_id}','downsize_instance','${target}')"><span class="material-icons-round">compress</span> Downsize</button>`;
             } else {
-                actionBtn = `<button class="btn btn-secondary btn-sm" onclick="showResourceDetail('${r.resource_id}','${r.type}','${r.reason.replace(/'/g, "\\'").replace(/"/g, '&quot;')}',${waste})"><span class="material-icons-round">info</span> Review</button>`;
+                actionBtn = `<button class="btn btn-secondary btn-sm" onclick="showResourceDetail('${r.resource_id}')"><span class="material-icons-round">info</span> Review</button>`;
             }
             
             return `<tr>
@@ -1673,16 +1852,22 @@
     async function remediate(resourceId, type, newValue = null) {
         setLoading(true);
         try {
-            const body = { resource_id: resourceId, remediation_type: type };
-            if (newValue) body.new_value = newValue;
+            const payload = {
+                resource_id: resourceId,
+                remediation_type: type,
+                new_value: newValue,
+                env: window.currentEnv
+            };
             const resp = await fetch('/api/remediate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify(payload)
             });
             const json = await resp.json();
             if (resp.ok) {
                 showToast(json.message || 'Remediation successful!', 'success');
+                // Re-run scan to refresh the list and charts dynamically!
+                setTimeout(() => runScan(), 500);
             } else {
                 showToast(json.detail || 'Remediation failed', 'error');
             }
@@ -1737,10 +1922,49 @@
                 'Check if the service behind this ALB was decommissioned',
                 'Delete ALB + target group + listener rules if no longer needed'
             ]
+        },
+        'iam_role': {
+            icon: 'security',
+            color: 'var(--accent-yellow)',
+            title: 'Unused IAM Role',
+            recommendation: 'This IAM role has zero activity in the past 90 days. Unused credentials pose a security risk.',
+            actions: [
+                'Review who created the role and if it\'s required for future tasks',
+                'Delete via Terraform to reduce security attack surface',
+                'Disable role temporarily if deletion is risky'
+            ]
+        },
+        'azure_vm': {
+            icon: 'computer',
+            color: '#0078D4',
+            title: 'Idle Azure VM',
+            recommendation: 'This Azure virtual machine has extremely low CPU utilization (< 5%). It should be downsized or deallocated.',
+            actions: [
+                'Review recent metrics in Azure Monitor',
+                'Deallocate or stop the VM using the portal or CLI',
+                'Downsize VM instance type via Terraform'
+            ]
+        },
+        'gcp_instance': {
+            icon: 'dns',
+            color: '#DB4437',
+            title: 'Orphaned GCP Instance',
+            recommendation: 'This GCP Compute Engine instance has zero network traffic and is considered orphaned.',
+            actions: [
+                'Verify if this instance was part of an old experiment',
+                'Snapshot the disk and delete the instance',
+                'Remove from Terraform state to permanently destroy'
+            ]
         }
     };
 
-    function showResourceDetail(resourceId, type, reason, waste) {
+    function showResourceDetail(resourceId) {
+        const r = scanData.find(x => x.resource_id === resourceId);
+        if (!r) return;
+        const type = r.type;
+        const reason = r.reason;
+        const waste = r.estimated_monthly_waste || r.estimated_monthly_savings || 0;
+
         const info = _resourceRecommendations[type] || { icon: 'info', color: 'var(--accent-cyan)', title: type, recommendation: reason, actions: ['Review manually'] };
         const body = document.getElementById('resourceDetailBody');
         body.innerHTML = `
@@ -1788,7 +2012,13 @@
     }
 
     function acknowledgeResource(resourceId) {
+        const ackList = JSON.parse(localStorage.getItem('acknowledged_resources') || '[]');
+        if (!ackList.includes(resourceId)) {
+            ackList.push(resourceId);
+            localStorage.setItem('acknowledged_resources', JSON.stringify(ackList));
+        }
         showToast(resourceId + ' acknowledged — tagged for manual cleanup', 'success');
+        renderDashboard(); // Re-render to update the dashboard instantly!
     }
 
     // ───────── DOWNLOAD REPORT ─────────
@@ -1863,6 +2093,24 @@
             </div>`;
         }).join('');
         document.getElementById('storageComparison').innerHTML = storageHTML;
+
+        // Database cards
+        if (data.database) {
+            const databaseHTML = ['aws', 'azure', 'gcp'].map(p => {
+                const d = data.database[p];
+                const isCheapest = data.cheapest_database === p;
+                return `<div class="provider-card ${isCheapest ? 'cheapest' : ''}">
+                    <div class="provider-logo">${providerEmoji[p]}</div>
+                    <div class="provider-name">${providerNames[p]}</div>
+                    <div class="provider-price">$${d.monthly.toFixed(2)} <span class="unit">/mo</span></div>
+                    <div class="provider-detail">$${d.hourly.toFixed(4)}/hr on-demand</div>
+                    <div class="provider-specs">
+                        <div class="spec-row"><span>Type</span><strong>${d.type}</strong></div>
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('databaseComparison').innerHTML = databaseHTML;
+        }
 
         // Chart
         if (chartPriceCompare) chartPriceCompare.destroy();
@@ -1987,6 +2235,14 @@
                     <div class="setting-status ${s.github_connected ? 'ss-active' : 'ss-inactive'}">${s.github_connected ? '● Connected' : 'Local Only'}</div>
                 </div>
                 <div class="setting-item">
+                    <div class="setting-icon si-orange"><span class="material-icons-round">notifications</span></div>
+                    <div class="setting-info">
+                        <h4>Slack Webhook</h4>
+                        <p>Receive notifications on automated remediations</p>
+                    </div>
+                    <div class="setting-status ${s.slack_connected ? 'ss-active' : 'ss-inactive'}">${s.slack_connected ? '● Connected' : '○ Not Set'}</div>
+                </div>
+                <div class="setting-item">
                     <div class="setting-icon si-cyan"><span class="material-icons-round">dns</span></div>
                     <div class="setting-info">
                         <h4>AWS Region</h4>
@@ -2089,17 +2345,60 @@
     const _originalRenderDashboard = renderDashboard;
     renderDashboard = function() {
         _originalRenderDashboard();
-        // Animate the metric counters
-        const totalWaste = scanData.reduce((s, r) => s + (r.estimated_monthly_waste || r.estimated_monthly_savings || 0), 0);
+        // Animate the metric counters using filtered data
+        const activeData = getActiveScanData();
+        const totalWaste = activeData.reduce((s, r) => s + (r.estimated_monthly_waste || r.estimated_monthly_savings || 0), 0);
         animateCounter(document.getElementById('mTotalWaste'), totalWaste);
         animateCounter(document.getElementById('mAnnualSavings'), totalWaste * 12);
-        animateCounterInt(document.getElementById('mResourceCount'), scanData.length);
+        animateCounterInt(document.getElementById('mResourceCount'), activeData.length);
     };
 
     // ───────── INIT ─────────
+    async function loadInitialData() {
+        try {
+            const userRes = await fetch('/api/user');
+            const user = await userRes.json();
+            document.getElementById('userName').textContent = user.name;
+            document.getElementById('userRole').textContent = user.role;
+            document.getElementById('userInitials').textContent = user.initials;
+        } catch (err) {
+            console.error("Failed to load user profile");
+        }
+
+        try {
+            const res = await fetch(`/api/scan?env=${window.currentEnv}`);
+            const data = await res.json();
+            scanData = data.data;
+            pricingEngine = data.pricing_engine;
+            renderDashboard();
+        } catch (err) {
+            console.error("Failed to load initial scan");
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         loadSettings();
         showWelcome();
+        loadInitialData();
+        window.runScan = runScan;
+
+        window.toggleEnvDropdown = function(e) {
+            e.stopPropagation();
+            const el = document.getElementById('envDropdown');
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+
+        window.switchEnv = function(env) {
+            window.currentEnv = env;
+            document.getElementById('currentEnv').textContent = env;
+            document.getElementById('envDropdown').style.display = 'none';
+            runScan();
+        }
+
+        document.addEventListener('click', () => {
+            const dropdown = document.getElementById('envDropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        });
     });
     </script>
 </body>

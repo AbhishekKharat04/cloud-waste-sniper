@@ -79,3 +79,24 @@ resource "aws_lb" "legacy_lb" {
     Name = "Legacy-App-LB"
   }
 }
+
+resource "aws_iam_role" "unused_admin_role" {
+  name = "Legacy-Admin-Role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name = "UnusedAdminRole"
+  }
+}

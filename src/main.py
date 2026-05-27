@@ -12,7 +12,7 @@ _project_root = Path(__file__).resolve().parent.parent
 _env_path = _project_root / ".env"
 load_dotenv(dotenv_path=_env_path, override=True)
 
-from src.scraper import AWSSniper
+from src.scraper import CloudWasteSniper
 from src.mapper import StateMapper, TFModifier
 from src.git_engine import GitPRCreator
 from src.reporter import FinOpsReporter
@@ -35,6 +35,7 @@ class RemediateRequest(BaseModel):
     resource_id: str
     remediation_type: str  # e.g., "count_zero" or "downsize_instance"
     new_value: Optional[str] = None  # e.g., "t3.medium"
+    env: Optional[str] = "production"
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -42,9 +43,9 @@ async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/api/scan")
-async def scan_waste():
+async def scan_waste(env: str = "production"):
     """Triggers the AWS read-only scan (or returns mocked data)."""
-    sniper = AWSSniper()
+    sniper = CloudWasteSniper(env=env)
     try:
         waste = sniper.scan_all()
         pricing_engine = "Bright Data Real-Time Scraped Engine" if sniper.live_pricing else "Default Estimates"
@@ -58,9 +59,9 @@ async def scan_waste():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/report")
-async def download_report():
+async def download_report(env: str = "production"):
     """Runs a scan and returns a downloadable Markdown executive report."""
-    sniper = AWSSniper()
+    sniper = CloudWasteSniper(env=env)
     try:
         waste = sniper.scan_all()
         reporter = FinOpsReporter(waste)
@@ -77,8 +78,9 @@ async def download_report():
 async def remediate_waste(req: RemediateRequest):
     """Handles the core FinOps workflow: Maps state -> Modifies TF -> Generates PR."""
     repo_path = os.getenv("REPO_PATH", ".")
-    state_path = os.path.join(repo_path, "mock_infra", "terraform.tfstate")
-    tf_path = os.path.join(repo_path, "mock_infra", "main.tf")
+    env = req.env if req.env else "production"
+    state_path = os.path.join(repo_path, "mock_infra", env, "terraform.tfstate")
+    tf_path = os.path.join(repo_path, "mock_infra", env, "main.tf")
     
     try:
         # 1. Map AWS ID to local Terraform type & name
@@ -107,13 +109,24 @@ async def remediate_waste(req: RemediateRequest):
             
         # 3. Commit and generate PR (Only run on "modified")
         git_engine = GitPRCreator()
-        pr_success = git_engine.create_remediation_pr(tf_type, tf_name)
+        pr_success = git_engine.create_remediation_pr(tf_type, tf_name, branch_name=f"finops/{env}/optimize-resources")
         
         if not pr_success:
-            return {"status": "partial_success", "message": "File modified, but Git PR generation failed."}
+            scan_history.record_remediation(tf_type, tf_name, req.remediation_type, "partial")
+            return {"status": "partial_success", "message": f"Terraform modified for {tf_type}.{tf_name}. Local Git commit may need manual push."}
         
         scan_history.record_remediation(tf_type, tf_name, req.remediation_type, "success")
-        return {"status": "success", "message": f"Successfully processed {tf_type}.{tf_name} and committed/PR'd changes."}
+        
+        # 4. Send Slack notification if webhook exists
+        slack_webhook = os.getenv("SLACK_WEBHOOK_URL", "").strip()
+        if slack_webhook:
+            import requests
+            try:
+                requests.post(slack_webhook, json={"text": f"✅ *FinOps Action*: Successfully remediated `{tf_type}.{tf_name}` via Cloud Waste Sniper. PR has been generated."}, timeout=5)
+            except Exception as e:
+                print(f"Failed to send Slack notification: {e}")
+
+        return {"status": "success", "message": f"✓ Remediated {tf_type}.{tf_name} — Terraform patched & committed to branch finops/optimize-resources"}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -155,7 +168,17 @@ async def get_settings():
             "live_pricing": os.getenv("USE_REAL_PRICING", "false").lower() == "true",
             "brightdata_connected": bool(os.getenv("BRIGHTDATA_API_KEY", "").strip()),
             "github_connected": bool(os.getenv("GITHUB_TOKEN", "").strip()),
-            "aws_region": os.getenv("AWS_REGION", "us-east-1"),
-            "repo_path": os.getenv("REPO_PATH", "."),
+            "slack_connected": bool(os.getenv("SLACK_WEBHOOK_URL", "").strip()),
+            "aws_region": os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
+            "repo_path": os.getenv("REPO_PATH", ".")
         }
+    }
+
+@app.get("/api/user")
+async def get_user_profile():
+    """Returns dynamic user profile information."""
+    return {
+        "name": os.getenv("FINOPS_ADMIN_NAME", "FinOps Admin"),
+        "role": os.getenv("FINOPS_ADMIN_ROLE", "System Administrator"),
+        "initials": os.getenv("FINOPS_ADMIN_NAME", "FinOps Admin")[:2].upper()
     }

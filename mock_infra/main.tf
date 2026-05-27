@@ -13,6 +13,7 @@ resource "aws_ebs_volume" "unused_data_volume" {
 }
 
 resource "aws_ebs_volume" "legacy_backup_volume" {
+  count = 0 # Added by Cloud Waste Sniper
   availability_zone = "us-east-1b"
   size              = 200
   type              = "gp3"

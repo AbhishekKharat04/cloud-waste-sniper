@@ -789,6 +789,49 @@
         .ss-active { background: rgba(0,230,118,0.1); color: var(--accent-green); }
         .ss-inactive { background: rgba(255,77,106,0.1); color: var(--accent-red); }
 
+        /* Premium switch slider */
+        .switch-toggle {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+        .switch-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .switch-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--border-main);
+            transition: .3s;
+            border-radius: 24px;
+        }
+        .switch-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .switch-slider {
+            background-color: var(--accent-cyan);
+        }
+        input:checked + .switch-slider:before {
+            transform: translateX(20px);
+        }
+
         /* ═══════════════ EMPTY STATES ═══════════════ */
         .empty-state {
             text-align: center;
@@ -1146,6 +1189,47 @@
             transition: background var(--transition-smooth);
         }
         .step-line.done { background: var(--accent-green); }
+
+        /* ═══════════════ PRINT REPORT STYLESHEET ═══════════════ */
+        @media print {
+            body {
+                background: #ffffff !important;
+                color: #000000 !important;
+            }
+            aside.sidebar, .topbar, .copilot-trigger, .copilot-drawer, .btn, .scan-detail-badge, td button {
+                display: none !important;
+            }
+            .main-content {
+                margin-left: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+            .metric-card, .chart-container, .table-container, .settings-grid, .setting-item {
+                background: #ffffff !important;
+                border: 1px solid #dddddd !important;
+                color: #000000 !important;
+                box-shadow: none !important;
+            }
+            .resource-id, .waste-amount {
+                color: #000000 !important;
+                font-weight: bold !important;
+            }
+            h1, h2, h3, h4, p, span, td, th, div {
+                color: #000000 !important;
+                -webkit-text-fill-color: #000000 !important;
+                background: none !important;
+            }
+            .main-content::before {
+                content: "🎯 CLOUD WASTE SNIPER — EXECUTIVE FINOPS AUDIT REPORT";
+                display: block;
+                font-size: 22px;
+                font-weight: 800;
+                margin-bottom: 24px;
+                border-bottom: 3px solid #000000;
+                padding-bottom: 12px;
+                color: #000000 !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1319,7 +1403,10 @@
                 </div>
                 <div class="topbar-right">
                     <button class="btn btn-secondary btn-sm" id="btnDownloadReport" onclick="window.location.href='/api/report?env=' + window.currentEnv">
-                        <span class="material-icons-round">download</span> Report
+                        <span class="material-icons-round">download</span> MD Report
+                    </button>
+                    <button class="btn btn-secondary btn-sm" id="btnPrintPDF" onclick="printExecutiveReport()" style="background:rgba(0,210,255,0.1);color:var(--accent-cyan);border-color:rgba(0,210,255,0.2);">
+                        <span class="material-icons-round">print</span> Print PDF
                     </button>
                     <button class="btn btn-primary" id="btnRunScan" onclick="runScan()">
                         <span class="material-icons-round">bolt</span> Run FinOps Scan
@@ -1524,6 +1611,199 @@
         </main>
     </div>
 
+    <!-- AI COPILOT FLOATING TRIGGER -->
+    <div class="copilot-trigger" onclick="toggleCopilot()">
+        <span class="material-icons-round">smart_toy</span>
+        <span class="copilot-badge">AI</span>
+    </div>
+
+    <!-- AI COPILOT DRAWER -->
+    <div class="copilot-drawer" id="copilotDrawer">
+        <div class="copilot-header">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span class="material-icons-round" style="color:var(--accent-cyan);">smart_toy</span>
+                <div>
+                    <h3 style="font-size:15px;font-weight:600;">FinOps AI Copilot</h3>
+                    <p style="font-size:11px;color:var(--text-tertiary);" id="copilotEnvBadge">Active context: production</p>
+                </div>
+            </div>
+            <button onclick="toggleCopilot()" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:22px;display:flex;align-items:center;">&times;</button>
+        </div>
+        <div class="copilot-body" id="copilotChatBody">
+            <div class="copilot-message message-ai">
+                👋 Hello Alex! I am your context-aware **Cloud Waste Sniper AI Copilot**.<br><br>
+                I have loaded your live environment findings. Ask me to:
+                <ul style="margin-top:8px;padding-left:16px;">
+                    <li>Summarize environment waste</li>
+                    <li>Draft a Slack broadcast alert</li>
+                    <li>Create a Jira cleanup ticket spec</li>
+                </ul>
+            </div>
+        </div>
+        <div class="copilot-footer">
+            <div class="copilot-chips">
+                <div class="copilot-chip" onclick="quickChat('Draft Slack alert')">📬 Draft Slack alert</div>
+                <div class="copilot-chip" onclick="quickChat('Generate Jira ticket')">🎫 Generate Jira ticket</div>
+                <div class="copilot-chip" onclick="quickChat('Provide cost summary')">📊 Waste summary</div>
+            </div>
+            <div class="copilot-input-container">
+                <input type="text" class="copilot-input" id="copilotInput" placeholder="Ask AI Copilot..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+                <button class="copilot-btn" onclick="sendChatMessage()"><span class="material-icons-round">send</span></button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* AI Copilot styles */
+        .copilot-trigger {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+            color: #0b0f19;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 10px 25px rgba(0,210,255,0.3);
+            z-index: 999;
+            transition: .3s;
+        }
+        .copilot-trigger:hover {
+            transform: scale(1.05);
+        }
+        .copilot-trigger .material-icons-round {
+            font-size: 28px;
+        }
+        .copilot-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: var(--accent-orange);
+            color: white;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .copilot-drawer {
+            position: fixed;
+            top: 0;
+            right: -420px;
+            width: 400px;
+            height: 100vh;
+            background: var(--bg-card);
+            border-left: 1px solid var(--border-main);
+            box-shadow: -10px 0 30px rgba(0,0,0,0.3);
+            z-index: 1000;
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+        .copilot-drawer.show {
+            right: 0;
+        }
+        .copilot-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-main);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .copilot-body {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .copilot-message {
+            max-width: 85%;
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .message-ai {
+            background: rgba(0,210,255,0.05);
+            border: 1px solid rgba(0,210,255,0.1);
+            color: var(--text-primary);
+            align-self: flex-start;
+        }
+        .message-ai p, .message-ai h1, .message-ai h2, .message-ai h3 {
+            margin-bottom: 8px;
+        }
+        .message-user {
+            background: var(--accent-cyan);
+            color: #0b0f19;
+            align-self: flex-end;
+            font-weight: 500;
+        }
+        .copilot-footer {
+            padding: 20px;
+            border-top: 1px solid var(--border-main);
+            background: rgba(11,15,25,0.3);
+        }
+        .copilot-input-container {
+            display: flex;
+            gap: 8px;
+        }
+        .copilot-input {
+            flex-grow: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-main);
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+        .copilot-input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+        }
+        .copilot-btn {
+            background: var(--accent-cyan);
+            border: none;
+            border-radius: var(--radius-sm);
+            color: #0b0f19;
+            padding: 10px 16px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .copilot-btn:hover {
+            opacity: 0.9;
+        }
+        .copilot-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .copilot-chip {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-main);
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 11px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: .2s;
+        }
+        .copilot-chip:hover {
+            background: rgba(0,210,255,0.1);
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+        }
+    </style>
+
     <!-- RESOURCE DETAIL MODAL -->
     <div class="modal-overlay" id="resourceDetailModal">
         <div class="modal" style="max-width:560px;text-align:left;">
@@ -1532,6 +1812,22 @@
                 <button onclick="closeResourceDetail()" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:20px;">&times;</button>
             </div>
             <div id="resourceDetailBody"></div>
+        </div>
+    </div>
+
+    <!-- SIMULATE IMPACT MODAL -->
+    <div class="modal-overlay" id="simulateImpactModal">
+        <div class="modal" style="max-width:600px;text-align:left;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span class="material-icons-round" style="color:var(--accent-cyan);font-size:24px;">shield</span>
+                    <h2 style="font-size:18px;-webkit-text-fill-color:var(--text-primary);background:none;margin:0;padding:0;">AI Impact Simulation</h2>
+                </div>
+                <button onclick="closeSimulateModal()" style="background:none;border:none;cursor:pointer;color:var(--text-tertiary);font-size:24px;display:flex;align-items:center;">&times;</button>
+            </div>
+            <div id="simulateModalBody">
+                <!-- Loaded dynamically -->
+            </div>
         </div>
     </div>
 
@@ -1827,6 +2123,7 @@
             const waste = r.estimated_monthly_waste || r.estimated_monthly_savings || 0;
             const source = r.pricing_source === 'brightdata' ? '<span class="scan-detail-badge sdb-brightdata">Bright Data</span>' : '<span class="scan-detail-badge sdb-default">Default</span>';
             
+            const simulateBtn = `<button class="btn btn-secondary btn-sm" style="background:rgba(0,210,255,0.1);color:var(--accent-cyan);border-color:rgba(0,210,255,0.2);margin-right:4px;" onclick="simulateImpact('${r.resource_id}', '${r.type}')"><span class="material-icons-round" style="font-size:14px;margin-right:4px;">shield</span> Simulate</button>`;
             let actionBtn = '';
             if (r.type === 'ebs_volume') {
                 actionBtn = `<button class="btn btn-danger btn-sm" onclick="remediate('${r.resource_id}','count_zero')"><span class="material-icons-round">delete_forever</span> Remove</button>`;
@@ -1843,7 +2140,7 @@
                 <td>${r.reason}</td>
                 <td><span class="waste-amount">${fmt(waste)}/mo</span></td>
                 <td>${source}</td>
-                <td>${actionBtn}</td>
+                <td><div style="display:flex;align-items:center;">${simulateBtn} ${actionBtn}</div></td>
             </tr>`;
         }).join('');
     }
@@ -2019,6 +2316,145 @@
         }
         showToast(resourceId + ' acknowledged — tagged for manual cleanup', 'success');
         renderDashboard(); // Re-render to update the dashboard instantly!
+    }
+
+    // ───────── AI COPILOT DRAWER ─────────
+    function toggleCopilot() {
+        const drawer = document.getElementById('copilotDrawer');
+        drawer.classList.toggle('show');
+        document.getElementById('copilotEnvBadge').textContent = `Active context: ${windowEnv}`;
+    }
+
+    function quickChat(text) {
+        document.getElementById('copilotInput').value = text;
+        sendChatMessage();
+    }
+
+    async function sendChatMessage() {
+        const input = document.getElementById('copilotInput');
+        const text = input.value.trim();
+        if (!text) return;
+
+        input.value = '';
+        const body = document.getElementById('copilotChatBody');
+        
+        // Append user message
+        body.innerHTML += `<div class="copilot-message message-user">${text}</div>`;
+        body.scrollTop = body.scrollHeight;
+
+        // Append loading message
+        const loadingId = 'ai-loading-' + Date.now();
+        body.innerHTML += `<div class="copilot-message message-ai" id="${loadingId}">
+            <span style="display:flex;align-items:center;gap:6px;">
+                <span class="pulse-dot"></span>
+                Analyzing cloud state...
+            </span>
+        </div>`;
+        body.scrollTop = body.scrollHeight;
+
+        try {
+            const resp = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text, env: windowEnv })
+            });
+            const data = await resp.json();
+            document.getElementById(loadingId).remove();
+            
+            // Format basic markdown to html manually for beautiful display
+            let replyHtml = data.reply
+                .replace(/\n/g, '<br>')
+                .replace(/### (.*?)(?:<br>|$)/g, '<h4 style="font-size:14px;font-weight:700;color:var(--accent-cyan);margin-top:8px;">$1</h4>')
+                .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                .replace(/\* ([^*]+)(?:<br>|$)/g, '• $1<br>')
+                .replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:3px;font-family:monospace;font-size:12px;">$1</code>');
+                
+            body.innerHTML += `<div class="copilot-message message-ai">${replyHtml}</div>`;
+            body.scrollTop = body.scrollHeight;
+        } catch(e) {
+            document.getElementById(loadingId).remove();
+            body.innerHTML += `<div class="copilot-message message-ai" style="color:var(--accent-red);">Failed to connect to AI server. Check backend logs.</div>`;
+            body.scrollTop = body.scrollHeight;
+        }
+    }
+
+    // ───────── AI IMPACT SIMULATOR ─────────
+    async function simulateImpact(resourceId, resourceType) {
+        const modal = document.getElementById('simulateImpactModal');
+        const body = document.getElementById('simulateModalBody');
+        
+        body.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;padding:40px 0;gap:16px;">
+                <span class="material-icons-round spin-icon" style="font-size:48px;color:var(--accent-cyan);">hourglass_empty</span>
+                <p style="color:var(--text-secondary);font-size:14px;">Gemini is simulating GitOps dry-run patches...</p>
+            </div>
+        `;
+        modal.classList.add('show');
+
+        try {
+            const resp = await fetch('/api/simulate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ resource_id: resourceId, resource_type: resourceType, env: windowEnv })
+            });
+            const data = await resp.json();
+            const sim = data.simulation;
+            
+            let riskColor = 'var(--accent-green)';
+            if (sim.risk_level === 'Medium') riskColor = 'var(--accent-orange)';
+            if (sim.risk_level === 'High') riskColor = 'var(--accent-red)';
+
+            body.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:16px;margin-top:10px;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+                        <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border-main);border-radius:8px;padding:12px;text-align:center;">
+                            <p style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;">Confidence Score</p>
+                            <h3 style="font-size:24px;font-weight:700;color:var(--accent-cyan);">${sim.confidence_score}%</h3>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border-main);border-radius:8px;padding:12px;text-align:center;">
+                            <p style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;">Risk Classification</p>
+                            <h3 style="font-size:20px;font-weight:700;color:${riskColor};">${sim.risk_level}</h3>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border-main);border-radius:8px;padding:12px;text-align:center;">
+                            <p style="font-size:11px;color:var(--text-tertiary);margin-bottom:4px;">Est. Downtime</p>
+                            <h3 style="font-size:18px;font-weight:700;color:var(--text-primary);margin-top:2px;">${sim.estimated_downtime}</h3>
+                        </div>
+                    </div>
+                    
+                    <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border-main);border-radius:8px;padding:16px;">
+                        <h4 style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-primary);display:flex;align-items:center;gap:6px;">
+                            <span class="material-icons-round" style="font-size:16px;color:var(--accent-cyan);">analytics</span> Deep-Dive Risk Assessment
+                        </h4>
+                        <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);">${sim.risk_assessment}</p>
+                    </div>
+
+                    <div style="background:rgba(0,230,118,0.02);border:1px solid rgba(0,230,118,0.1);border-radius:8px;padding:16px;">
+                        <h4 style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--accent-green);display:flex;align-items:center;gap:6px;">
+                            <span class="material-icons-round" style="font-size:16px;">verified_user</span> Security & Compliance Impact
+                        </h4>
+                        <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);">${sim.security_impact}</p>
+                    </div>
+
+                    <div style="background:rgba(251,146,60,0.02);border:1px solid rgba(251,146,60,0.1);border-radius:8px;padding:16px;">
+                        <h4 style="font-size:13px;font-weight:600;margin-bottom:6px;color:var(--accent-orange);display:flex;align-items:center;gap:6px;">
+                            <span class="material-icons-round" style="font-size:16px;">assignment_turned_in</span> Recommended Pre-remediation Action
+                        </h4>
+                        <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);">${sim.recommended_pre_check}</p>
+                    </div>
+                </div>
+            `;
+        } catch(e) {
+            body.innerHTML = `<p style="color:var(--accent-red);padding:20px;text-align:center;">Failed to run impact simulation. Check API server logs.</p>`;
+        }
+    }
+
+    function closeSimulateModal() {
+        document.getElementById('simulateImpactModal').classList.remove('show');
+    }
+
+    // ───────── PRINT EXECUTIVE AUDIT REPORT ─────────
+    function printExecutiveReport() {
+        window.print();
     }
 
     // ───────── DOWNLOAD REPORT ─────────
@@ -2213,10 +2649,13 @@
                 <div class="setting-item">
                     <div class="setting-icon si-orange"><span class="material-icons-round">science</span></div>
                     <div class="setting-info">
-                        <h4>AWS Mode</h4>
-                        <p>${s.mock_mode ? 'Using simulated infrastructure data' : 'Connected to live AWS account'}</p>
+                        <h4>Mock Mode</h4>
+                        <p>Bypass live calls and use mock infrastructure data</p>
                     </div>
-                    <div class="setting-status ${s.mock_mode ? 'ss-inactive' : 'ss-active'}">${s.mock_mode ? 'Mock' : '● Live'}</div>
+                    <label class="switch-toggle">
+                        <input type="checkbox" id="sett-mock-mode" ${s.mock_mode ? 'checked' : ''} onchange="saveSettings()">
+                        <span class="switch-slider"></span>
+                    </label>
                 </div>
                 <div class="setting-item">
                     <div class="setting-icon si-green"><span class="material-icons-round">attach_money</span></div>
@@ -2224,7 +2663,10 @@
                         <h4>Live Pricing</h4>
                         <p>Real-time price scraping via Bright Data SERP</p>
                     </div>
-                    <div class="setting-status ${s.live_pricing ? 'ss-active' : 'ss-inactive'}">${s.live_pricing ? '● Active' : '○ Off'}</div>
+                    <label class="switch-toggle">
+                        <input type="checkbox" id="sett-live-pricing" ${s.live_pricing ? 'checked' : ''} onchange="saveSettings()">
+                        <span class="switch-slider"></span>
+                    </label>
                 </div>
                 <div class="setting-item">
                     <div class="setting-icon si-cyan"><span class="material-icons-round">code</span></div>
@@ -2232,7 +2674,10 @@
                         <h4>GitHub Integration</h4>
                         <p>PyGithub for automated PR creation</p>
                     </div>
-                    <div class="setting-status ${s.github_connected ? 'ss-active' : 'ss-inactive'}">${s.github_connected ? '● Connected' : 'Local Only'}</div>
+                    <label class="switch-toggle">
+                        <input type="checkbox" id="sett-github" ${s.github_connected ? 'checked' : ''} onchange="saveSettings()">
+                        <span class="switch-slider"></span>
+                    </label>
                 </div>
                 <div class="setting-item">
                     <div class="setting-icon si-orange"><span class="material-icons-round">notifications</span></div>
@@ -2240,7 +2685,21 @@
                         <h4>Slack Webhook</h4>
                         <p>Receive notifications on automated remediations</p>
                     </div>
-                    <div class="setting-status ${s.slack_connected ? 'ss-active' : 'ss-inactive'}">${s.slack_connected ? '● Connected' : '○ Not Set'}</div>
+                    <label class="switch-toggle">
+                        <input type="checkbox" id="sett-slack" ${s.slack_connected ? 'checked' : ''} onchange="saveSettings()">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-icon si-purple"><span class="material-icons-round">task_alt</span></div>
+                    <div class="setting-info">
+                        <h4>Jira Integration</h4>
+                        <p>Auto-generate cleanup sprint tasks</p>
+                    </div>
+                    <label class="switch-toggle">
+                        <input type="checkbox" id="sett-jira" ${s.jira_connected ? 'checked' : ''} onchange="saveSettings()">
+                        <span class="switch-slider"></span>
+                    </label>
                 </div>
                 <div class="setting-item">
                     <div class="setting-icon si-cyan"><span class="material-icons-round">dns</span></div>
@@ -2250,16 +2709,30 @@
                     </div>
                     <div class="setting-status ss-active">${s.aws_region}</div>
                 </div>
-                <div class="setting-item">
-                    <div class="setting-icon si-purple"><span class="material-icons-round">folder</span></div>
-                    <div class="setting-info">
-                        <h4>Repository Path</h4>
-                        <p style="word-break:break-all">${s.repo_path}</p>
-                    </div>
-                    <div class="setting-status ss-active">Set</div>
-                </div>
             `;
         } catch(e) { console.error(e); }
+    }
+
+    async function saveSettings() {
+        try {
+            const body = {
+                mock_mode: document.getElementById('sett-mock-mode').checked,
+                live_pricing: document.getElementById('sett-live-pricing').checked,
+                github_connected: document.getElementById('sett-github').checked,
+                slack_connected: document.getElementById('sett-slack').checked,
+                jira_connected: document.getElementById('sett-jira').checked
+            };
+            const resp = await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            showToast('Configuration saved successfully!', 'success');
+            loadSettings();
+        } catch (e) {
+            console.error(e);
+            showToast('Failed to update system settings.', 'error');
+        }
     }
 
     // ───────── ANIMATED NUMBER COUNTER ─────────
